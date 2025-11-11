@@ -48,7 +48,7 @@ def find_closest_drivable_node(occupancy_grid: OccupancyGrid) -> OccupancyGridIn
 
 def node_cost(
     occupancy_grid_resolution: float,
-    node: Point,
+    node: OccupancyGridIndex,
     robot_position: Point,
     waypoint_robot_relative: Point
 ) -> float:
