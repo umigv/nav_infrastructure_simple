@@ -26,6 +26,7 @@ def convert_occupancy_grid_coordinates_to_robot_relative_position(
     occupancy_grid_coordinates: OccupancyGridIndex,
     robot_position: Point
 ) -> Point:
+    # TODO: Consider rotation
     return Point(
         x=(occupancy_grid_coordinates.x - ROBOT_POSITION_IN_OCC_GRID.x) * occupancy_grid_resolution + robot_position.x,
         y=(occupancy_grid_coordinates.y - ROBOT_POSITION_IN_OCC_GRID.y) * occupancy_grid_resolution + robot_position.y
