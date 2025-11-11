@@ -19,7 +19,7 @@ ROBOT_POSITION_IN_OCC_GRID = OccupancyGridIndex(x=12, y=77)
 DRIVABLE_CELL_VALUE = 0
 
 def index_occupancy_grid(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex):
-    return occupancy_grid.data[index.x * occupancy_grid.info.height + index.y]
+    return occupancy_grid.data[index.x * occupancy_grid.info.width + index.y]
 
 def convert_occupancy_grid_coordinates_to_robot_relative_position(
     occupancy_grid_resolution: float,
