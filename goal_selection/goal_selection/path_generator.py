@@ -11,15 +11,15 @@ from std_msgs.msg import Header
 
 @dataclass(unsafe_hash=True)
 class OccupancyGridIndex:
-    x: int
-    y: int
+    x: int # +x = right
+    y: int # +y = forward
 
 NULL_OCC_GRID_INDEX = OccupancyGridIndex(x=-1, y=-1)
-ROBOT_POSITION_IN_OCC_GRID = OccupancyGridIndex(x=12, y=77)
+ROBOT_POSITION_IN_OCC_GRID = OccupancyGridIndex(x=77, y=12)
 DRIVABLE_CELL_VALUE = 0
 
 def index_occupancy_grid(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex):
-    return occupancy_grid.data[index.x * occupancy_grid.info.width + index.y]
+    return occupancy_grid.data[index.y * occupancy_grid.info.width + index.x]
 
 def convert_occupancy_grid_coordinates_to_robot_relative_position(
     occupancy_grid_resolution: float,
@@ -38,11 +38,11 @@ def inflate_occupancy_grid(occupancy_grid: OccupancyGrid) -> OccupancyGrid:
 # The robot is in unknown space in the occupancy grid, so we traverse forwards until we find the first drivable node
 def find_closest_drivable_node(occupancy_grid: OccupancyGrid) -> OccupancyGridIndex | None:
     current_position = dataclasses.replace(ROBOT_POSITION_IN_OCC_GRID)
-    while current_position.x < occupancy_grid.info.height:
+    while current_position.y < occupancy_grid.info.height:
         if index_occupancy_grid(occupancy_grid, current_position) == DRIVABLE_CELL_VALUE:
             return current_position
 
-        current_position.x += 1
+        current_position.y += 1
     
     return None
 
@@ -109,8 +109,8 @@ def generate_path(
                 y=node.y + dy
             )
 
-            if potential_position.x < 0 or potential_position.x >= inflated_occupancy_grid.info.height\
-                or potential_position.y < 0 or potential_position.y >= inflated_occupancy_grid.info.width:
+            if potential_position.x < 0 or potential_position.x >= inflated_occupancy_grid.info.width\
+                or potential_position.y < 0 or potential_position.y >= inflated_occupancy_grid.info.height:
                 continue
 
             if index_occupancy_grid(inflated_occupancy_grid, potential_position) != DRIVABLE_CELL_VALUE \

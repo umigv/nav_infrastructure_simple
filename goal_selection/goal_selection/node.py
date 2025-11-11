@@ -24,7 +24,7 @@ def calculate_lat_long_difference_in_meters(lat1, long1, lat2, long2) -> tuple[f
 
 
 WAYPOINTS_FILE_PATH = pathlib.Path("/home/arv/arv-ws/src/nav_infrastructure_simple/goal_selection/waypoints.json")
-PATH_PUBLISH_PERIOD_SECONDS = 1
+PATH_PUBLISH_PERIOD_SECONDS = 0.1
 
 class GoalSelectionNode(Node):
     odometry: Odometry | None = None
@@ -83,8 +83,8 @@ class GoalSelectionNode(Node):
         )
 
         self.waypoint_robot_relative = Point(
-            x=self.odometry.pose.pose.position.x + latitude_difference, 
-            y=self.odometry.pose.pose.position.y + longitude_difference, 
+            x=self.odometry.pose.pose.position.x + longitude_difference, 
+            y=self.odometry.pose.pose.position.y + latitude_difference, 
         )
 
     def occupancy_grid_callback(self, new_occupancy_grid: OccupancyGrid):
