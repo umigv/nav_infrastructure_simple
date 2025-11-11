@@ -17,11 +17,7 @@ setup(
     maintainer_email='102838865+hardy-ethan@users.noreply.github.com',
     description='TODO: Package description',
     license='TODO: License declaration',
-    extras_require={
-        'test': [
-            'pytest',
-        ],
-    },
+    extras_require={},
     entry_points={
         'console_scripts': [
             'goal_selection = goal_selection.node:main'
