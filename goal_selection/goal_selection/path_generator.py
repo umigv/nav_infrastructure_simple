@@ -120,7 +120,7 @@ def generate_path(
             search_container.append(potential_position)
             visited[potential_position] = node
 
-    backtrace = []
+    backtrace: list[OccupancyGridIndex] = []
     current_backtrace_node = dataclasses.replace(goal_and_cost.goal)
     while visited[current_backtrace_node] != NULL_OCC_GRID_INDEX:
         backtrace.append(current_backtrace_node)
