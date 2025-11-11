@@ -29,7 +29,7 @@ PATH_PUBLISH_PERIOD_SECONDS = 0.1
 class GoalSelectionNode(Node):
     odometry: Odometry | None = None
     waypoint_robot_relative: Point | None = None
-    occupancy_grid: OccupancyGrid | None = None
+    inflated_occupancy_grid: OccupancyGrid | None = None
     path_publisher: Publisher
 
     def __init__(self):
@@ -51,8 +51,8 @@ class GoalSelectionNode(Node):
 
         self.create_subscription(
             OccupancyGrid,
-            "/occupancy_grid",
-            self.occupancy_grid_callback,
+            "/inflated_occupancy_grid",
+            self.inflated_occupancy_grid_callback,
             10
         )
 
@@ -87,15 +87,15 @@ class GoalSelectionNode(Node):
             y=self.odometry.pose.pose.position.y + latitude_difference, 
         )
 
-    def occupancy_grid_callback(self, new_occupancy_grid: OccupancyGrid):
-        self.occupancy_grid = new_occupancy_grid
+    def inflated_occupancy_grid_callback(self, new_occupancy_grid: OccupancyGrid):
+        self.inflated_occupancy_grid = new_occupancy_grid
 
     def generate_and_publish_path(self):
-        if self.occupancy_grid is None or self.odometry is None or self.waypoint_robot_relative is None:
+        if self.inflated_occupancy_grid is None or self.odometry is None or self.waypoint_robot_relative is None:
             return
 
         path = path_generator.generate_path(
-            occupancy_grid=self.occupancy_grid,
+            occupancy_grid=self.inflated_occupancy_grid,
             robot_pose=self.odometry.pose.pose,
             waypoint_robot_relative=self.waypoint_robot_relative
         )

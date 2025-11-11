@@ -32,18 +32,45 @@ def convert_occupancy_grid_coordinates_to_robot_relative_position(
         y=(occupancy_grid_coordinates.y - ROBOT_POSITION_IN_OCC_GRID.y) * occupancy_grid_resolution + robot_position.y
     )
 
-def inflate_occupancy_grid(occupancy_grid: OccupancyGrid) -> OccupancyGrid:
-    print("Warning: inflate_occupancy_grid called but not implemented, returning uninflated occupancy grid!", file=sys.stderr)
-    return occupancy_grid
-
-# The robot is in unknown space in the occupancy grid, so we traverse forwards until we find the first drivable node
+# The robot is in unknown space in the occupancy grid, 
+# so we traverse forwards until we find the first drivable node.
+#
+# If going forward is not enough, we then traverse left and right as well
 def find_closest_drivable_node(occupancy_grid: OccupancyGrid) -> OccupancyGridIndex | None:
-    current_position = dataclasses.replace(ROBOT_POSITION_IN_OCC_GRID)
-    while current_position.y < occupancy_grid.info.height:
-        if index_occupancy_grid(occupancy_grid, current_position) == DRIVABLE_CELL_VALUE:
-            return current_position
+    visited: set[OccupancyGridIndex] = set()
+    search_container: deque[OccupancyGridIndex] = deque()
 
-        current_position.y += 1
+    current_position = dataclasses.replace(ROBOT_POSITION_IN_OCC_GRID)
+    visited.add(current_position)
+    search_container.append(current_position)
+    
+    while len(search_container) > 0:
+        node = search_container.popleft()
+
+        for dx, dy in [
+            (0, 1),
+            (1, 1),
+            (-1, 1),
+            (1, 0),
+            (-1, 0)
+        ]:
+            potential_position = OccupancyGridIndex(
+                x=node.x + dx,
+                y=node.y + dy
+            )
+
+            if potential_position.x < 0 or potential_position.x >= occupancy_grid.info.width\
+                or potential_position.y < 0 or potential_position.y >= occupancy_grid.info.height:
+                continue
+
+            if potential_position in visited:
+                continue
+
+            if index_occupancy_grid(occupancy_grid, potential_position) == DRIVABLE_CELL_VALUE:
+                return potential_position
+            
+            search_container.append(potential_position)
+            visited.add(potential_position)
     
     return None
 
@@ -74,12 +101,10 @@ def generate_path(
     robot_pose: Pose,
     waypoint_robot_relative: Point,
 ) -> Path:
-    inflated_occupancy_grid = inflate_occupancy_grid(occupancy_grid)
-
     visited: dict[OccupancyGridIndex, OccupancyGridIndex] = {}
     search_container: deque[OccupancyGridIndex] = deque()
 
-    start_node = find_closest_drivable_node(inflated_occupancy_grid)
+    start_node = find_closest_drivable_node(occupancy_grid)
 
     assert start_node is not None, "Could not find drivable area in front of robot!"
 
@@ -92,7 +117,7 @@ def generate_path(
         node = search_container.popleft()
 
         cost = node_cost(
-            occupancy_grid_resolution=inflated_occupancy_grid.info.resolution,
+            occupancy_grid_resolution=occupancy_grid.info.resolution,
             node=node,
             robot_position=robot_pose.position,
             waypoint_robot_relative=waypoint_robot_relative
@@ -110,11 +135,11 @@ def generate_path(
                 y=node.y + dy
             )
 
-            if potential_position.x < 0 or potential_position.x >= inflated_occupancy_grid.info.width\
-                or potential_position.y < 0 or potential_position.y >= inflated_occupancy_grid.info.height:
+            if potential_position.x < 0 or potential_position.x >= occupancy_grid.info.width\
+                or potential_position.y < 0 or potential_position.y >= occupancy_grid.info.height:
                 continue
 
-            if index_occupancy_grid(inflated_occupancy_grid, potential_position) != DRIVABLE_CELL_VALUE \
+            if index_occupancy_grid(occupancy_grid, potential_position) != DRIVABLE_CELL_VALUE \
                 or potential_position in visited:
                 continue
             
@@ -138,7 +163,7 @@ def generate_path(
                 ),
                 pose=Pose(
                     position=convert_occupancy_grid_coordinates_to_robot_relative_position(
-                        inflated_occupancy_grid.info.resolution,
+                        occupancy_grid.info.resolution,
                         backtrace_node,
                         robot_pose.position
                     )
