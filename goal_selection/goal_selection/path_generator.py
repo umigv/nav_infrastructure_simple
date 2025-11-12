@@ -6,7 +6,7 @@ import math
 import sys
 from collections import deque
 from nav_msgs.msg import OccupancyGrid, Path
-from geometry_msgs.msg import Point, Pose, PoseStamped
+from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
 from std_msgs.msg import Header
 
 @dataclass(unsafe_hash=True)
@@ -21,15 +21,31 @@ DRIVABLE_CELL_VALUE = 0
 def index_occupancy_grid(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex):
     return occupancy_grid.data[index.y * occupancy_grid.info.width + index.x]
 
+def get_yaw_radians_from_quaternion(q: Quaternion):
+    siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+    cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+    return math.atan2(siny_cosp, cosy_cosp)
+
 def convert_occupancy_grid_coordinates_to_robot_relative_position(
     occupancy_grid_resolution: float,
     occupancy_grid_coordinates: OccupancyGridIndex,
-    robot_position: Point
+    robot_pose: Pose
 ) -> Point:
-    # TODO: Consider rotation
+    yaw_radians = get_yaw_radians_from_quaternion(robot_pose.orientation)
+
+    occ_point_with_robot_occ_origin = OccupancyGridIndex(
+        x=occupancy_grid_coordinates.x - ROBOT_POSITION_IN_OCC_GRID.x,
+        y=occupancy_grid_coordinates.y - ROBOT_POSITION_IN_OCC_GRID.y
+    )
+
+    rotated_occ_point_with_robot_occ_origin = Point(
+        x=occ_point_with_robot_occ_origin.x * math.cos(yaw_radians) - occ_point_with_robot_occ_origin.y * math.sin(yaw_radians),
+        y=occ_point_with_robot_occ_origin.x * math.sin(yaw_radians) + occ_point_with_robot_occ_origin.y * math.cos(yaw_radians)
+    )
+
     return Point(
-        x=(occupancy_grid_coordinates.x - ROBOT_POSITION_IN_OCC_GRID.x) * occupancy_grid_resolution + robot_position.x,
-        y=(occupancy_grid_coordinates.y - ROBOT_POSITION_IN_OCC_GRID.y) * occupancy_grid_resolution + robot_position.y
+        x=rotated_occ_point_with_robot_occ_origin.x * occupancy_grid_resolution + robot_pose.position.x,
+        y=rotated_occ_point_with_robot_occ_origin.y * occupancy_grid_resolution + robot_pose.position.y
     )
 
 # The robot is in unknown space in the occupancy grid, 
@@ -77,13 +93,13 @@ def find_closest_drivable_node(occupancy_grid: OccupancyGrid) -> OccupancyGridIn
 def node_cost(
     occupancy_grid_resolution: float,
     node: OccupancyGridIndex,
-    robot_position: Point,
+    robot_pose: Pose,
     waypoint_robot_relative: Point
 ) -> float:
     node_robot_relative_coords = convert_occupancy_grid_coordinates_to_robot_relative_position(
         occupancy_grid_resolution,
         node,
-        robot_position
+        robot_pose
     )
 
     return math.sqrt(
@@ -119,7 +135,7 @@ def generate_path(
         cost = node_cost(
             occupancy_grid_resolution=occupancy_grid.info.resolution,
             node=node,
-            robot_position=robot_pose.position,
+            robot_pose=robot_pose,
             waypoint_robot_relative=waypoint_robot_relative
         )
 
@@ -165,7 +181,7 @@ def generate_path(
                     position=convert_occupancy_grid_coordinates_to_robot_relative_position(
                         occupancy_grid.info.resolution,
                         backtrace_node,
-                        robot_pose.position
+                        robot_pose
                     )
                 )
             )
