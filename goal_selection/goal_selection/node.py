@@ -78,8 +78,8 @@ class GoalSelectionNode(Node):
         current_waypoint = waypoints[0]
 
         latitude_difference, longitude_difference = calculate_lat_long_difference_in_meters(
+            new_gps_data.latitude, new_gps_data.longitude,
             current_waypoint["latitude"], current_waypoint["longitude"],
-            new_gps_data.latitude, new_gps_data.longitude
         )
 
         self.waypoint_robot_relative = Point(
