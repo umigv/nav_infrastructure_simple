@@ -22,7 +22,7 @@ def lat_long_to_meters(latitude: float, longitude: float) -> tuple[float, float]
 
 
 WAYPOINTS_FILE_PATH = pathlib.Path("/home/umarv/ros2_ws/src/nav_infrastructure_simple/goal_selection/waypoints.json")
-PATH_PUBLISH_PERIOD_SECONDS = 0.1
+PATH_PUBLISH_PERIOD_SECONDS = 2
 
 class GoalSelectionNode(Node):
     odometry: Odometry | None = None
