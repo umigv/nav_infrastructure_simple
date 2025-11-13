@@ -68,9 +68,6 @@ class PurePursuitNode(Node):
 
 
     def path_callback(self, path_msg: Path):
-        if len(self.smoothed_path_points) > 0:
-            return
-
         self.get_logger().info('Received a new path from subscription.')
 
         self.smoothed_path_points = self.smooth_path_spline(path_msg)
@@ -85,7 +82,7 @@ class PurePursuitNode(Node):
   
     def smooth_path_spline(self, path: Path, smoothing=0.1):
         if len(path.poses) <= 3:
-            return path
+            return [(pose_stamped.pose.position.x, pose_stamped.pose.position.y) for pose_stamped in path.poses]
 
         x = [pose_stamped.pose.position.x for pose_stamped in path.poses]
         y = [pose_stamped.pose.position.y for pose_stamped in path.poses]
