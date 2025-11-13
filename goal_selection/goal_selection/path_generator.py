@@ -1,10 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import dataclasses
 import itertools
 import json
 import math
 import sys
 from collections import deque
+import heapq
 from nav_msgs.msg import OccupancyGrid, Path
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
 from rclpy.node import Node
@@ -14,6 +15,11 @@ from std_msgs.msg import Header
 class OccupancyGridIndex:
     y: int # +y = left
     x: int # +x = forward
+
+@dataclass(order=True)
+class IndexAndCost:
+    cost: float
+    index: OccupancyGridIndex = field(compare=False)
 
 NULL_OCC_GRID_INDEX = OccupancyGridIndex(y=-1, x=-1)
 ROBOT_POSITION_IN_OCC_GRID = OccupancyGridIndex(y=77, x=12)
@@ -27,7 +33,7 @@ def get_yaw_radians_from_quaternion(q: Quaternion):
     cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
     return math.atan2(siny_cosp, cosy_cosp)
 
-def convert_occupancy_grid_coordinates_to_robot_relative_position(
+def convert_occupancy_grid_index_to_robot_relative_position(
     occupancy_grid_resolution: float,
     occupancy_grid_coordinates: OccupancyGridIndex,
     robot_pose: Pose
@@ -50,10 +56,10 @@ def convert_occupancy_grid_coordinates_to_robot_relative_position(
     )
 
 # The robot is in unknown space in the occupancy grid, 
-# so we traverse forwards until we find the first drivable node.
+# so we traverse forwards until we find the first drivable index.
 #
 # If going forward is not enough, we then traverse left and right as well
-def find_closest_drivable_node(occupancy_grid: OccupancyGrid) -> OccupancyGridIndex | None:
+def find_closest_drivable_point(occupancy_grid: OccupancyGrid) -> OccupancyGridIndex | None:
     visited: set[OccupancyGridIndex] = set()
     search_container: deque[OccupancyGridIndex] = deque()
 
@@ -62,7 +68,7 @@ def find_closest_drivable_node(occupancy_grid: OccupancyGrid) -> OccupancyGridIn
     search_container.append(current_position)
     
     while len(search_container) > 0:
-        node = search_container.popleft()
+        index = search_container.popleft()
 
         for dy, dx in [
             (0, 1),
@@ -72,8 +78,8 @@ def find_closest_drivable_node(occupancy_grid: OccupancyGrid) -> OccupancyGridIn
             (-1, 0)
         ]:
             potential_position = OccupancyGridIndex(
-                y=node.y + dy,
-                x=node.x + dx
+                y=index.y + dy,
+                x=index.x + dx
             )
 
             if potential_position.y < 0 or potential_position.y >= occupancy_grid.info.width\
@@ -91,27 +97,110 @@ def find_closest_drivable_node(occupancy_grid: OccupancyGrid) -> OccupancyGridIn
     
     return None
 
-def node_cost(
+def index_cost(
     occupancy_grid_resolution: float,
-    node: OccupancyGridIndex,
+    index: OccupancyGridIndex,
     robot_pose: Pose,
     waypoint_robot_relative: Point
 ) -> float:
-    node_robot_relative_coords = convert_occupancy_grid_coordinates_to_robot_relative_position(
+    index_robot_relative_coords = convert_occupancy_grid_index_to_robot_relative_position(
         occupancy_grid_resolution,
-        node,
+        index,
         robot_pose
     )
 
     return math.sqrt(
-        (node_robot_relative_coords.x - waypoint_robot_relative.x) ** 2
-        + (node_robot_relative_coords.y - waypoint_robot_relative.y) ** 2
+        (index_robot_relative_coords.x - waypoint_robot_relative.x) ** 2
+        + (index_robot_relative_coords.y - waypoint_robot_relative.y) ** 2
     )
 
-@dataclass
-class GoalAndCost:
-    goal: OccupancyGridIndex
-    cost: float
+def generate_path_occupancy_grid_indices(
+    goal_selection_node: Node,
+    occupancy_grid: OccupancyGrid,
+    start_index: OccupancyGridIndex,
+    robot_pose: Pose,
+    waypoint_robot_relative: Point,
+):
+    came_from: dict[OccupancyGridIndex, OccupancyGridIndex] = {}
+    cost_so_far: dict[OccupancyGridIndex, float] = {}
+    priority_queue: list[IndexAndCost] = []
+
+    cost_so_far[start_index] = 0.0
+    start_heuristic = index_cost(
+        occupancy_grid_resolution=occupancy_grid.info.resolution,
+        index=start_index,
+        robot_pose=robot_pose,
+        waypoint_robot_relative=waypoint_robot_relative
+    )
+    heapq.heappush(priority_queue, IndexAndCost(cost=start_heuristic, index=start_index))
+    came_from[start_index] = NULL_OCC_GRID_INDEX
+
+    best_goal_index = start_index
+    best_goal_distance = start_heuristic
+
+    while len(priority_queue) > 0:
+        current_item = heapq.heappop(priority_queue)
+        current_index = current_item.index
+
+        # Get the actual cost_so_far for this index
+        current_cost = cost_so_far.get(current_index, float('inf'))
+
+        # Check if this index is closer to waypoint than current best
+        distance_to_waypoint = index_cost(
+            occupancy_grid_resolution=occupancy_grid.info.resolution,
+            index=current_index,
+            robot_pose=robot_pose,
+            waypoint_robot_relative=waypoint_robot_relative
+        )
+
+        if distance_to_waypoint < best_goal_distance:
+            best_goal_index = current_index
+            best_goal_distance = distance_to_waypoint
+
+        for dy, dx in itertools.product([-1, 0, 1], repeat=2):
+            if dy == 0 and dx == 0:
+                continue
+
+            neighbor = OccupancyGridIndex(
+                y=current_index.y + dy,
+                x=current_index.x + dx
+            )
+
+            if neighbor.y < 0 or neighbor.y >= occupancy_grid.info.width\
+                or neighbor.x < 0 or neighbor.x >= occupancy_grid.info.height:
+                continue
+
+            if index_occupancy_grid(occupancy_grid, neighbor) != DRIVABLE_CELL_VALUE:
+                continue
+
+            # Edge cost distance between indices (1 for straight, sqrt(2) for diagonal)
+            edge_cost = math.sqrt(dy * dy + dx * dx) * occupancy_grid.info.resolution
+            
+            new_cost = current_cost + edge_cost
+
+            if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
+                cost_so_far[neighbor] = new_cost
+                came_from[neighbor] = current_index
+                
+                # A* priority: cost_so_far + heuristic (distance to waypoint)
+                heuristic = index_cost(
+                    occupancy_grid_resolution=occupancy_grid.info.resolution,
+                    index=neighbor,
+                    robot_pose=robot_pose,
+                    waypoint_robot_relative=waypoint_robot_relative
+                )
+                priority = new_cost + heuristic
+                heapq.heappush(priority_queue, IndexAndCost(cost=priority, index=neighbor))
+
+    goal_selection_node.get_logger().info(f"Generated path from {start_index} to {best_goal_index}!")
+
+    backtrace: list[OccupancyGridIndex] = []
+    current_backtrace_index = dataclasses.replace(best_goal_index)
+    while came_from[current_backtrace_index] != NULL_OCC_GRID_INDEX:
+        backtrace.append(current_backtrace_index)
+        current_backtrace_index = came_from[current_backtrace_index]
+
+    return reversed(backtrace)
 
 def generate_path(
     goal_selection_node: Node,
@@ -119,58 +208,8 @@ def generate_path(
     robot_pose: Pose,
     waypoint_robot_relative: Point,
 ) -> Path:
-    visited: dict[OccupancyGridIndex, OccupancyGridIndex] = {}
-    search_container: deque[OccupancyGridIndex] = deque()
-
-    start_node = find_closest_drivable_node(occupancy_grid)
-
-    assert start_node is not None, "Could not find drivable area in front of robot!"
-
-    search_container.append(start_node)
-    visited[start_node] = NULL_OCC_GRID_INDEX
-
-    goal_and_cost: GoalAndCost | None = None
-
-    while len(search_container) > 0:
-        node = search_container.popleft()
-
-        cost = node_cost(
-            occupancy_grid_resolution=occupancy_grid.info.resolution,
-            node=node,
-            robot_pose=robot_pose,
-            waypoint_robot_relative=waypoint_robot_relative
-        )
-
-        if goal_and_cost is None or cost < goal_and_cost.cost:
-            goal_and_cost = GoalAndCost(
-                goal=node,
-                cost=cost
-            )
-
-        for dy, dx in itertools.product([-1, 0, 1], repeat=2):
-            potential_position = OccupancyGridIndex(
-                y=node.y + dy,
-                x=node.x + dx
-            )
-
-            if potential_position.y < 0 or potential_position.y >= occupancy_grid.info.width\
-                or potential_position.x < 0 or potential_position.x >= occupancy_grid.info.height:
-                continue
-
-            if index_occupancy_grid(occupancy_grid, potential_position) != DRIVABLE_CELL_VALUE \
-                or potential_position in visited:
-                continue
-            
-            search_container.append(potential_position)
-            visited[potential_position] = node
-
-    goal_selection_node.get_logger().info(f"Generated path from {start_node} to {goal_and_cost.goal}!")
-
-    backtrace: list[OccupancyGridIndex] = []
-    current_backtrace_node = dataclasses.replace(goal_and_cost.goal)
-    while visited[current_backtrace_node] != NULL_OCC_GRID_INDEX:
-        backtrace.append(current_backtrace_node)
-        current_backtrace_node = visited[current_backtrace_node]
+    start_point = find_closest_drivable_point(occupancy_grid)
+    assert start_point is not None, "Could not find drivable area in front of robot!"
 
     return Path(
         header=Header(
@@ -182,13 +221,19 @@ def generate_path(
                     frame_id="odom"
                 ),
                 pose=Pose(
-                    position=convert_occupancy_grid_coordinates_to_robot_relative_position(
+                    position=convert_occupancy_grid_index_to_robot_relative_position(
                         occupancy_grid.info.resolution,
-                        backtrace_node,
+                        index,
                         robot_pose
                     )
                 )
             )
-            for backtrace_node in reversed(backtrace)
+            for index in generate_path_occupancy_grid_indices(
+                goal_selection_node=goal_selection_node,
+                occupancy_grid=occupancy_grid,
+                start_index=start_point,
+                robot_pose=robot_pose,
+                waypoint_robot_relative=waypoint_robot_relative
+            )
         ]
     )
