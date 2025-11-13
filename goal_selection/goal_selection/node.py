@@ -9,21 +9,19 @@ from nav_msgs.msg import Odometry, Path, OccupancyGrid
 import rclpy
 from sensor_msgs.msg import NavSatFix
 from rclpy.node import Node, Publisher
+from pyproj import Transformer
 
 def degrees_to_radians(degrees: float) -> float:
     return math.pi/180 * degrees
 
-# https://en.wikipedia.org/wiki/Geographic_coordinate_system#Length_of_a_degree
-def calculate_lat_long_difference_in_meters(lat1, long1, lat2, long2) -> tuple[float, float]:
-    latitude_midpoint = (lat1+long1)/2.0
 
-    meters_per_degree_latitude = 111132.954 - 559.822 * math.cos(2.0 * latitude_midpoint) + 1.175 * math.cos(4.0 * latitude_midpoint)
-    meters_per_degree_longitude = (math.pi/180) * 6367449 * math.cos (latitude_midpoint)
-
-    return (lat2 - lat1) * meters_per_degree_latitude, (long2 - long1) * meters_per_degree_longitude
+def lat_long_to_meters(latitude: float, longitude: float) -> tuple[float, float]:
+    # WGS84 to UTM (automatically selects zone)
+    transformer = Transformer.from_crs("EPSG:4326", "EPSG:32618", always_xy=True)
+    return transformer.transform(longitude, latitude)
 
 
-WAYPOINTS_FILE_PATH = pathlib.Path("/home/arv/arv-ws/src/nav_infrastructure_simple/goal_selection/waypoints.json")
+WAYPOINTS_FILE_PATH = pathlib.Path("/home/umarv/ros2_ws/src/nav_infrastructure_simple/goal_selection/waypoints.json")
 PATH_PUBLISH_PERIOD_SECONDS = 0.1
 
 class GoalSelectionNode(Node):
@@ -77,14 +75,12 @@ class GoalSelectionNode(Node):
 
         current_waypoint = waypoints[0]
 
-        latitude_difference, longitude_difference = calculate_lat_long_difference_in_meters(
-            new_gps_data.latitude, new_gps_data.longitude,
-            current_waypoint["latitude"], current_waypoint["longitude"],
-        )
+        current_long_meters, current_lat_meters = lat_long_to_meters(current_waypoint['latitude'], current_waypoint['longitude'])
+        new_long_meters, new_lat_meters = lat_long_to_meters(new_gps_data.latitude, new_gps_data.longitude)
 
         self.waypoint_robot_relative = Point(
-            x=self.odometry.pose.pose.position.x + longitude_difference, 
-            y=self.odometry.pose.pose.position.y + latitude_difference, 
+            x=current_lat_meters-new_lat_meters,
+            y=-(current_long_meters-new_long_meters)
         )
 
         self.get_logger().info(f"Robot relative waypoint: {self.waypoint_robot_relative}")

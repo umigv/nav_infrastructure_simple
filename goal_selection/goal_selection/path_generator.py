@@ -12,15 +12,15 @@ from std_msgs.msg import Header
 
 @dataclass(unsafe_hash=True)
 class OccupancyGridIndex:
-    x: int # +x = right
-    y: int # +y = forward
+    y: int # +y = left
+    x: int # +x = forward
 
-NULL_OCC_GRID_INDEX = OccupancyGridIndex(x=-1, y=-1)
-ROBOT_POSITION_IN_OCC_GRID = OccupancyGridIndex(x=77, y=12)
+NULL_OCC_GRID_INDEX = OccupancyGridIndex(y=-1, x=-1)
+ROBOT_POSITION_IN_OCC_GRID = OccupancyGridIndex(y=77, x=12)
 DRIVABLE_CELL_VALUE = 0
 
 def index_occupancy_grid(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex):
-    return occupancy_grid.data[index.y * occupancy_grid.info.width + index.x]
+    return occupancy_grid.data[index.x * occupancy_grid.info.width + index.y]
 
 def get_yaw_radians_from_quaternion(q: Quaternion):
     siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
@@ -35,8 +35,8 @@ def convert_occupancy_grid_coordinates_to_robot_relative_position(
     yaw_radians = get_yaw_radians_from_quaternion(robot_pose.orientation)
 
     occ_point_with_robot_occ_origin = OccupancyGridIndex(
-        x=occupancy_grid_coordinates.x - ROBOT_POSITION_IN_OCC_GRID.x,
-        y=occupancy_grid_coordinates.y - ROBOT_POSITION_IN_OCC_GRID.y
+        y=occupancy_grid_coordinates.y - ROBOT_POSITION_IN_OCC_GRID.y,
+        x=occupancy_grid_coordinates.x - ROBOT_POSITION_IN_OCC_GRID.x
     )
 
     rotated_occ_point_with_robot_occ_origin = Point(
@@ -64,7 +64,7 @@ def find_closest_drivable_node(occupancy_grid: OccupancyGrid) -> OccupancyGridIn
     while len(search_container) > 0:
         node = search_container.popleft()
 
-        for dx, dy in [
+        for dy, dx in [
             (0, 1),
             (1, 1),
             (-1, 1),
@@ -72,12 +72,12 @@ def find_closest_drivable_node(occupancy_grid: OccupancyGrid) -> OccupancyGridIn
             (-1, 0)
         ]:
             potential_position = OccupancyGridIndex(
-                x=node.x + dx,
-                y=node.y + dy
+                y=node.y + dy,
+                x=node.x + dx
             )
 
-            if potential_position.x < 0 or potential_position.x >= occupancy_grid.info.width\
-                or potential_position.y < 0 or potential_position.y >= occupancy_grid.info.height:
+            if potential_position.y < 0 or potential_position.y >= occupancy_grid.info.width\
+                or potential_position.x < 0 or potential_position.x >= occupancy_grid.info.height:
                 continue
 
             if potential_position in visited:
@@ -147,14 +147,14 @@ def generate_path(
                 cost=cost
             )
 
-        for dx, dy in itertools.product([-1, 0, 1], repeat=2):
+        for dy, dx in itertools.product([-1, 0, 1], repeat=2):
             potential_position = OccupancyGridIndex(
-                x=node.x + dx,
-                y=node.y + dy
+                y=node.y + dy,
+                x=node.x + dx
             )
 
-            if potential_position.x < 0 or potential_position.x >= occupancy_grid.info.width\
-                or potential_position.y < 0 or potential_position.y >= occupancy_grid.info.height:
+            if potential_position.y < 0 or potential_position.y >= occupancy_grid.info.width\
+                or potential_position.x < 0 or potential_position.x >= occupancy_grid.info.height:
                 continue
 
             if index_occupancy_grid(occupancy_grid, potential_position) != DRIVABLE_CELL_VALUE \
