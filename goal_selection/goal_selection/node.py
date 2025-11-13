@@ -87,6 +87,8 @@ class GoalSelectionNode(Node):
             y=self.odometry.pose.pose.position.y + latitude_difference, 
         )
 
+        self.get_logger().info(f"Robot relative waypoint: {self.waypoint_robot_relative}")
+
     def inflated_occupancy_grid_callback(self, new_occupancy_grid: OccupancyGrid):
         self.inflated_occupancy_grid = new_occupancy_grid
 
@@ -95,6 +97,7 @@ class GoalSelectionNode(Node):
             return
 
         path = path_generator.generate_path(
+            goal_selection_node=self,
             occupancy_grid=self.inflated_occupancy_grid,
             robot_pose=self.odometry.pose.pose,
             waypoint_robot_relative=self.waypoint_robot_relative

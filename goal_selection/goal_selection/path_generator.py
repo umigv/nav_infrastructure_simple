@@ -7,6 +7,7 @@ import sys
 from collections import deque
 from nav_msgs.msg import OccupancyGrid, Path
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
+from rclpy.node import Node
 from std_msgs.msg import Header
 
 @dataclass(unsafe_hash=True)
@@ -113,6 +114,7 @@ class GoalAndCost:
     cost: float
 
 def generate_path(
+    goal_selection_node: Node,
     occupancy_grid: OccupancyGrid,
     robot_pose: Pose,
     waypoint_robot_relative: Point,
@@ -161,6 +163,8 @@ def generate_path(
             
             search_container.append(potential_position)
             visited[potential_position] = node
+
+    goal_selection_node.get_logger().info(f"Generated path from {start_node} to {goal_and_cost.goal}!")
 
     backtrace: list[OccupancyGridIndex] = []
     current_backtrace_node = dataclasses.replace(goal_and_cost.goal)
