@@ -68,6 +68,9 @@ class PurePursuitNode(Node):
 
 
     def path_callback(self, path_msg: Path):
+        if len(self.smoothed_path_points) > 0:
+            return
+
         self.get_logger().info('Received a new path from subscription.')
 
         self.smoothed_path_points = self.smooth_path_spline(path_msg)
@@ -217,11 +220,11 @@ class PurePursuitNode(Node):
         path_msg = Path()
         now = self.get_clock().now().to_msg()
         path_msg.header.stamp = now
-        path_msg.header.frame_id = "map"
+        path_msg.header.frame_id = "odom"
         for x, y in self.smoothed_path_points:
             pose = PoseStamped()
             pose.header.stamp = now
-            pose.header.frame_id = "map"
+            pose.header.frame_id = "odom"
             pose.pose.position.x = x
             pose.pose.position.y = y
             pose.pose.orientation.w = 1.0

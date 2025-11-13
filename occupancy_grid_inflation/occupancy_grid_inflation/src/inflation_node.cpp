@@ -20,7 +20,7 @@ private:
         nav_msgs::msg::OccupancyGrid inflated_grid = *msg;
 
         inflateObstacles(inflated_grid, 10, 20, 0.9); // 10
-        inflated_grid.header.frame_id = "map";
+        inflated_grid.header.frame_id = "odom";
     
         std::cout << "publishing..." << std::endl;
 

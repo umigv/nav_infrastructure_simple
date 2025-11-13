@@ -170,12 +170,12 @@ def generate_path(
 
     return Path(
         header=Header(
-            frame_id="map"
+            frame_id="odom"
         ),
         poses=[
             PoseStamped(
                 header=Header(
-                    frame_id="map"
+                    frame_id="odom"
                 ),
                 pose=Pose(
                     position=convert_occupancy_grid_coordinates_to_robot_relative_position(
