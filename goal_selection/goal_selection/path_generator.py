@@ -26,7 +26,7 @@ ROBOT_POSITION_IN_OCC_GRID = OccupancyGridIndex(y=77, x=12)
 DRIVABLE_CELL_VALUE = 0
 
 def index_occupancy_grid(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex):
-    return occupancy_grid.data[index.x * occupancy_grid.info.width + index.y]
+    return occupancy_grid.data[(index.x + ROBOT_POSITION_IN_OCC_GRID.x) * occupancy_grid.info.width + -index.y + ROBOT_POSITION_IN_OCC_GRID.y]
 
 def get_yaw_radians_from_quaternion(q: Quaternion):
     siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
@@ -40,14 +40,9 @@ def convert_occupancy_grid_index_to_robot_relative_position(
 ) -> Point:
     yaw_radians = get_yaw_radians_from_quaternion(robot_pose.orientation)
 
-    occ_point_with_robot_occ_origin = OccupancyGridIndex(
-        y=occupancy_grid_coordinates.y - ROBOT_POSITION_IN_OCC_GRID.y,
-        x=occupancy_grid_coordinates.x - ROBOT_POSITION_IN_OCC_GRID.x
-    )
-
     rotated_occ_point_with_robot_occ_origin = Point(
-        x=occ_point_with_robot_occ_origin.x * math.cos(yaw_radians) - occ_point_with_robot_occ_origin.y * math.sin(yaw_radians),
-        y=occ_point_with_robot_occ_origin.x * math.sin(yaw_radians) + occ_point_with_robot_occ_origin.y * math.cos(yaw_radians)
+        x=occupancy_grid_coordinates.x * math.cos(yaw_radians) - occupancy_grid_coordinates.y * math.sin(yaw_radians),
+        y=occupancy_grid_coordinates.x * math.sin(yaw_radians) + occupancy_grid_coordinates.y * math.cos(yaw_radians)
     )
 
     return Point(
@@ -63,7 +58,7 @@ def find_closest_drivable_point(occupancy_grid: OccupancyGrid) -> OccupancyGridI
     visited: set[OccupancyGridIndex] = set()
     search_container: deque[OccupancyGridIndex] = deque()
 
-    current_position = dataclasses.replace(ROBOT_POSITION_IN_OCC_GRID)
+    current_position = OccupancyGridIndex(y=0, x=0)
     visited.add(current_position)
     search_container.append(current_position)
     
@@ -82,8 +77,8 @@ def find_closest_drivable_point(occupancy_grid: OccupancyGrid) -> OccupancyGridI
                 x=index.x + dx
             )
 
-            if potential_position.y < 0 or potential_position.y >= occupancy_grid.info.width\
-                or potential_position.x < 0 or potential_position.x >= occupancy_grid.info.height:
+            if -potential_position.y + ROBOT_POSITION_IN_OCC_GRID.y < 0 or -potential_position.y + ROBOT_POSITION_IN_OCC_GRID.y >= occupancy_grid.info.width\
+                or potential_position.x + ROBOT_POSITION_IN_OCC_GRID.x < 0 or potential_position.x + ROBOT_POSITION_IN_OCC_GRID.x >= occupancy_grid.info.height:
                 continue
 
             if potential_position in visited:
@@ -166,8 +161,8 @@ def generate_path_occupancy_grid_indices(
                 x=current_index.x + dx
             )
 
-            if neighbor.y < 0 or neighbor.y >= occupancy_grid.info.width\
-                or neighbor.x < 0 or neighbor.x >= occupancy_grid.info.height:
+            if -neighbor.y + ROBOT_POSITION_IN_OCC_GRID.y < 0 or -neighbor.y + ROBOT_POSITION_IN_OCC_GRID.y >= occupancy_grid.info.width\
+                or neighbor.x + ROBOT_POSITION_IN_OCC_GRID.x < 0 or neighbor.x + ROBOT_POSITION_IN_OCC_GRID.x >= occupancy_grid.info.height:
                 continue
 
             if index_occupancy_grid(occupancy_grid, neighbor) != DRIVABLE_CELL_VALUE:

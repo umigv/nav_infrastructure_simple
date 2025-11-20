@@ -21,6 +21,10 @@ private:
 
         inflateObstacles(inflated_grid, 10, 20, 0.9); // 10
         inflated_grid.header.frame_id = "odom";
+        inflated_grid.info.origin.position.set__x(-12 * inflated_grid.info.resolution);
+        inflated_grid.info.origin.position.set__y(77 * inflated_grid.info.resolution);
+        inflated_grid.info.origin.orientation.set__z(-0.7071068);
+        inflated_grid.info.origin.orientation.set__w(0.7071068);
     
         std::cout << "publishing..." << std::endl;
 
