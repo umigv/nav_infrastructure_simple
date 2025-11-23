@@ -21,15 +21,11 @@ private:
 
         inflateObstacles(inflated_grid, 10, 20, 0.9); // 10
 
-        zoneWeighting(inflated_grid);
-
         inflated_grid.header.frame_id = "odom";
     
         std::cout << "publishing..." << std::endl;
 
         pub_->publish(inflated_grid);
-        //look into publishing the waypoint and map as one object. See how cell coord and such do it.
-
 
     }    
 
@@ -66,36 +62,7 @@ private:
     }
 
 
-
-    //this is just some made up numbers. I want to alter the stack to use the local goal before testing.
-    void zoneWeighting(
-        nav_msgs::msg::OccupancyGrid& grid,
-        double quadratic_factor = 2,
-        double linear_factor = 1,
-        double linear_ratio = .75,
-        int top_bar_size = 5,
-        int top_bar_weight = 5
-    ){
-        int width = grid.info.width;
-        int height = grid.info.height;
-            
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                //weight the bottom in a linear gradient
-                if (y <= (height * linear_ratio)){
-                    grid.data[y * width + x] += ((height * linear_ratio) - y) *  linear_factor;
-                }
-                //weight the top bar a little
-                if (y > (height - top_bar_size)){
-                    grid.data[y * width + x] += top_bar_weight;
-                }
-                //quadratic rating on the center
-                //change the weighting as needed
-                grid.data[y * width + x] += quadratic_factor * std::pow((width/2 - x), 2);
-
-            }
-        }
-    }
+ 
 
 
     rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_;

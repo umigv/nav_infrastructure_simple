@@ -91,10 +91,12 @@ class GoalSelectionNode(Node):
     def generate_and_publish_path(self):
         if self.inflated_occupancy_grid is None or self.odometry is None or self.waypoint_robot_relative is None:
             return
+        
+        weighted_occ_grid = path_generator.zone_weighting(self.inflated_occupancy_grid)
 
         path = path_generator.generate_path(
             goal_selection_node=self,
-            occupancy_grid=self.inflated_occupancy_grid,
+            occupancy_grid=weighted_occ_grid,
             robot_pose=self.odometry.pose.pose,
             waypoint_robot_relative=self.waypoint_robot_relative
         )
