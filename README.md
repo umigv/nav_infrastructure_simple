@@ -1,6 +1,14 @@
 # UMARV Navigation Stack 2025-2026
 
 ## Documentation
+
+## Warning: Intellisense
+When building, make sure you include `--symlink-install`. Otherwise, when control clicking a dependency in VSCode, it will take you to a copy of the dependency, instead of the actual source file. For example:
+
+```bash
+colcon build --symlink-install
+```
+
 ### Simulation
 You can run simulation by:
 1. Publishing occupancy grid
