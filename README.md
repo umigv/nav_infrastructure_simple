@@ -9,7 +9,7 @@ You can run simulation by:
 4. Running this stack
 5. Running your simulation node
 
-The following describes how to run the point simulator (basic non-physics based simulator with an empty occupancy grid).
+The following describes how to run the point simulator (basic non-physics based simulator with an empty occupancy grid). Run each of these commands in separate terminals.
 
 1. Publish an empty occupancy grid repeatedly:
     ```bash
