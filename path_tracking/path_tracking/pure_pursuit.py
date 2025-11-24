@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
-from geometry_msgs.msg import Twist, PoseStamped
+from geometry_msgs.msg import Twist, PoseStamped, Quaternion
 from nav_msgs.msg import Odometry, Path
 import asyncio
 import math
@@ -11,31 +11,31 @@ import numpy as np
 from scipy.interpolate import splprep, splev
 
 class PurePursuitNode(Node):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__('pure_pursuit_lookahead')
         self.get_logger().info('Pure Pursuit Node started.')
 
         # Parameters
-        self.max_linear_speed = 0.6
-        self.max_angular_speed = 0.6
-        self.base_lookahead = 0.1
-        self.k_speed = 0.55
-        self.visited = 0
-        self.speed_factor = 1
+        # self.max_linear_speed = 0.6
+        self.max_angular_speed: float = 0.6
+        self.base_lookahead: float = 0.1
+        self.k_speed: float = 0.55
+        self.visited: int = 0
+        self.speed_factor: float = 1
 
         # State
-        self.smoothed_path_points = []
-        self.pose = None
-        self.reached_goal = False
-        self.current_speed = 0.0
+        self.smoothed_path_points: list[(float, float)] = []
+        self.pose: tuple[float, float, float] | None = None
+        self.reached_goal: bool = False
+        self.current_speed: float = 0.0
 
-        self.cb_group = ReentrantCallbackGroup()
+        self.cb_group: ReentrantCallbackGroup = ReentrantCallbackGroup()
         self.create_subscription(Odometry, '/odom', self.odom_callback, 10, callback_group=self.cb_group)
-        self.cmd_pub = self.create_publisher(Twist, '/joy_cmd_vel', 10) # for running on the robot
-        # self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10) # for nav_visualization
-        self.path_pub = self.create_publisher(Path, '/smoothed_path', 10)
+        self.cmd_pub: rclpy.Publisher = self.create_publisher(Twist, '/joy_cmd_vel', 10) # for running on the robot
+        # self.cmd_pub: rclpy.Publisher = self.create_publisher(Twist, '/cmd_vel', 10) # for nav_visualization
+        self.path_pub: rclpy.Publisher = self.create_publisher(Path, '/smoothed_path', 10)
 
-        self.subscription = self.create_subscription(
+        self.subscription: rclpy.Subscription = self.create_subscription(
             Path,
             '/path',
             self.path_callback,
@@ -43,8 +43,8 @@ class PurePursuitNode(Node):
             callback_group=self.cb_group
         )
 
-        self.speed_percent = 2
-        self.exec_percent = 0.6
+        self.speed_percent: float = 2.0
+        self.exec_percent: float = 0.6
 
         # asyncio.create_task(self.update_vals())
 
@@ -53,10 +53,10 @@ class PurePursuitNode(Node):
 
         # threading.Thread(target=self.helper, daemon=True).start()
 
-    def helper(self):
+    def helper(self) -> None:
         asyncio.run(self.update_vals())
 
-    async def update_vals(self):
+    async def update_vals(self) -> None:
         await asyncio.sleep(1)
 
        
@@ -67,7 +67,7 @@ class PurePursuitNode(Node):
         print(self.exec_percent)
 
 
-    def path_callback(self, path_msg: Path):
+    def path_callback(self, path_msg: Path) -> None:
         self.get_logger().info('Received a new path from subscription.')
 
         self.smoothed_path_points = self.smooth_path_spline(path_msg)
@@ -80,7 +80,7 @@ class PurePursuitNode(Node):
         self.smoothed_path_points = []
     
   
-    def smooth_path_spline(self, path: Path, smoothing=0.1):
+    def smooth_path_spline(self, path: Path, smoothing: float = 0.1) -> list[(float, float)]:
         if len(path.poses) <= 3:
             return [(pose_stamped.pose.position.x, pose_stamped.pose.position.y) for pose_stamped in path.poses]
 
@@ -98,7 +98,7 @@ class PurePursuitNode(Node):
 
         return list(zip(x_smooth, y_smooth))
 
-    def odom_callback(self, msg):
+    def odom_callback(self, msg: Odometry) -> None:
         pos = msg.pose.pose.position
         ori = msg.pose.pose.orientation
         self.pose = (pos.x, pos.y, self.get_yaw_from_quaternion(ori))
@@ -106,12 +106,12 @@ class PurePursuitNode(Node):
         vy = msg.twist.twist.linear.y
         self.current_speed = math.hypot(vx, vy)
 
-    def get_yaw_from_quaternion(self, q):
+    def get_yaw_from_quaternion(self, q: Quaternion) -> float:
         siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
         cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         return math.atan2(siny_cosp, cosy_cosp)
 
-    def find_lookahead_point(self):
+    def find_lookahead_point(self) -> tuple[float, float] | None:
         if self.pose is None or not self.smoothed_path_points:
             return None
 
@@ -176,7 +176,7 @@ class PurePursuitNode(Node):
         return None
     
     
-    def control_loop(self):
+    def control_loop(self) -> None:
         local_point = self.find_lookahead_point()
         if local_point is None:
             self.cmd_pub.publish(Twist())
@@ -211,7 +211,7 @@ class PurePursuitNode(Node):
         self.cmd_pub.publish(cmd)
 
 
-    def publish_path(self):
+    def publish_path(self) -> None:
         if not self.smoothed_path_points:
             return
         path_msg = Path()
