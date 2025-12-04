@@ -21,7 +21,7 @@ The following describes how to run the point simulator (basic non-physics based 
 
 1. Publish an empty occupancy grid repeatedly:
     ```bash
-    ros2 topic pub --once /occupancy_grid nav_msgs/msg/OccupancyGrid "header:
+    ros2 topic pub -r 1 /occupancy_grid nav_msgs/msg/OccupancyGrid "header:
       frame_id: 'odom'
     info:
       resolution: 0.05
