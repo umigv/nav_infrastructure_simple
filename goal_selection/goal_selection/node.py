@@ -21,7 +21,7 @@ def lat_long_to_meters(latitude: float, longitude: float) -> tuple[float, float]
     return transformer.transform(longitude, latitude)
 
 
-WAYPOINTS_FILE_PATH = pathlib.Path("/home/umarv/ros2_ws/src/nav_infrastructure_simple/goal_selection/waypoints.json")
+WAYPOINTS_FILE_PATH = pathlib.Path("/home/arv/arv-ws/src/nav_infrastructure_simple/goal_selection/waypoints.json")
 PATH_PUBLISH_PERIOD_SECONDS = 2
 
 class GoalSelectionNode(Node):

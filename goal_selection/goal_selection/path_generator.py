@@ -222,16 +222,16 @@ def index_cost(
 #once we get to testing: because we're adding, may need to make sure the values don't exceed 100. Will probably need to be toned down a lot to align with the rest of priority.
 def generate_zone_weighting(
         grid: OccupancyGrid,
+        #keep all of the weighting values integers--if need to adjust for granularity, round up/down
         quadratic_factor: float = 2,
         linear_factor: float = 1,
-        linear_ratio:  float = 1.75,
+        linear_ratio:  float = 1,
         top_bar_size: int = 5,
         top_bar_weight: int = 5
 ):
 
     zone_weight_grid = grid
     #hopefully this doesn't cause pointer weirdness
-    zone_weight_grid.data = []
     width = grid.info.width
     height = grid.info.height
 
@@ -240,6 +240,7 @@ def generate_zone_weighting(
         y=0
         while (y < width): 
                 #weight the bottom in a linear gradient
+                zone_weight_grid.data[x * width + y] = 0
                 
                 if (x <= (height * linear_ratio)):
                     zone_weight_grid.data[x * width + y] += ((height * linear_ratio) - x) *  linear_factor
@@ -248,7 +249,7 @@ def generate_zone_weighting(
                     zone_weight_grid.data[x * width + y] += top_bar_weight
                 #quadratic rating on the center
                 #change the weighting as needed
-                zone_weight_grid.data[x * width + y] += quadratic_factor * pow((width/2 - y), 2)
+                zone_weight_grid.data[x * width + y] += int(quadratic_factor * pow(abs(width/2 - y), 2))
                 y+=1
         x+=1
 
