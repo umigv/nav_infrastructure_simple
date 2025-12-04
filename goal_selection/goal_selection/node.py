@@ -29,7 +29,7 @@ def lat_long_to_meters(latitude: float, longitude: float) -> tuple[float, float]
 
 
 # Waypoints are constant goals, supplied by the competition organizer
-WAYPOINTS_FILE_PATH = pathlib.Path("/home/umarv/ros2_ws/src/nav_infrastructure_simple/goal_selection/waypoints.json")
+WAYPOINTS_FILE_PATH = pathlib.Path("/home/arv/arv-ws/src/nav_infrastructure_simple/goal_selection/waypoints.json")
 # How often a path is generated and published, in seconds.
 PATH_PUBLISH_PERIOD_SECONDS = 2
 
