@@ -28,13 +28,13 @@ def generate_path_occupancy_grid_indices(
     start_index: OccupancyGridIndex,
     robot_pose: Pose,
     waypoint_robot_relative: Point,
+    zone_weighting: OccupancyGrid
 ):
     came_from: dict[OccupancyGridIndex, OccupancyGridIndex] = {}
     cost_so_far: dict[OccupancyGridIndex, float] = {}
     priority_queue: list[IndexAndCost] = []
 
-    #add this wherever appropriate.
-    zone_weight_grid = generate_zone_weighting(occupancy_grid)
+
 
     cost_so_far[start_index] = 0.0
     start_heuristic = index_cost(
@@ -102,7 +102,11 @@ def generate_path_occupancy_grid_indices(
                     robot_pose=robot_pose,
                     waypoint_robot_relative=waypoint_robot_relative
                 )
-                priority = new_cost + heuristic
+                #add the zone weight here
+                priority = new_cost + heuristic + index_occupancy_grid(zone_weighting)
+
+                print(priority)
+                
                 heapq.heappush(priority_queue, IndexAndCost(cost=priority, index=neighbor))
 
     goal_selection_node.get_logger().info(f"Generated path from {start_index} to {best_goal_index}!")
@@ -208,16 +212,14 @@ def index_cost(
         index,
         robot_pose
     )
-    #this is where we add the zone_weighting. running into an issue that it doesn't take in an occupancy grid object.
-    #ask if it is ok to pass the grid in or if we need to work backwards.
-    #index_zone_weighting()
+
 
 
     return math.sqrt(
         (index_robot_relative_coords.x - waypoint_robot_relative.x) ** 2
         + (index_robot_relative_coords.y - waypoint_robot_relative.y) ** 2
     )
-#once we get to testing: because we're adding, may need to make sure the values don't exceed 100.
+#once we get to testing: because we're adding, may need to make sure the values don't exceed 100. Will probably need to be toned down a lot to align with the rest of priority.
 def generate_zone_weighting(
         grid: OccupancyGrid,
         quadratic_factor: float = 2,
@@ -228,6 +230,7 @@ def generate_zone_weighting(
 ):
 
     zone_weight_grid = grid
+    #hopefully this doesn't cause pointer weirdness
     zone_weight_grid.data = []
     width = grid.info.width
     height = grid.info.height
@@ -265,7 +268,7 @@ def generate_path(
 
 
 
-
+    zone_weights = generate_zone_weighting(occupancy_grid)
 
     return Path(
         header=Header(
@@ -289,7 +292,8 @@ def generate_path(
                 occupancy_grid=occupancy_grid,
                 start_index=start_point,
                 robot_pose=robot_pose,
-                waypoint_robot_relative=waypoint_robot_relative
+                waypoint_robot_relative=waypoint_robot_relative,
+                zone_weighting=zone_weights
             )
         ]
     )
