@@ -4,6 +4,7 @@ import itertools
 import json
 import math
 import sys
+import numpy as np
 from collections import deque
 import heapq
 from nav_msgs.msg import OccupancyGrid, Path
@@ -28,7 +29,7 @@ def generate_path_occupancy_grid_indices(
     start_index: OccupancyGridIndex,
     robot_pose: Pose,
     waypoint_robot_relative: Point,
-    zone_weighting: OccupancyGrid
+    zone_weighting: np.ndarray
 ):
     came_from: dict[OccupancyGridIndex, OccupancyGridIndex] = {}
     cost_so_far: dict[OccupancyGridIndex, float] = {}
@@ -103,7 +104,7 @@ def generate_path_occupancy_grid_indices(
                     waypoint_robot_relative=waypoint_robot_relative
                 )
                 #add the zone weight here
-                priority = new_cost + heuristic + index_occupancy_grid(zone_weighting)
+                priority = new_cost + heuristic + zone_weighting[neighbor.x, neighbor.y]
 
                 print(priority)
                 
@@ -223,34 +224,38 @@ def index_cost(
 def generate_zone_weighting(
         grid: OccupancyGrid,
         #keep all of the weighting values integers--if need to adjust for granularity, round up/down
-        quadratic_factor: float = 2,
+        quadratic_factor: float = .25,
         linear_factor: float = 1,
-        linear_ratio:  float = 1,
+        linear_ratio:  float = .75,
         top_bar_size: int = 5,
-        top_bar_weight: int = 5
+        top_bar_weight: int = 15
 ):
-    """Generates the weighting grid of an occupancy grid of a given size. May need to play with default weightings, but be aware that they will be rounded to ints."""
+    """Generates the weighting grid of an occupancy grid of a given size as a 2D Numpy Array. Will need to play with default weightings"""
 
-    zone_weight_grid = grid
+
     #hopefully this doesn't cause pointer weirdness
     width = grid.info.width
     height = grid.info.height
+
+    zone_weight_grid = np.zeros((grid.info.height, grid.info.width))
 
     x=0
     while (x < height): 
         y=0
         while (y < width): 
-                #weight the bottom in a linear gradient
-                zone_weight_grid.data[x * width + y] = 0
-                
-                if (x <= (height * linear_ratio)):
-                    zone_weight_grid.data[x * width + y] += int(((height * linear_ratio) - x) *  linear_factor)
+               
+                if (x >= (height * linear_ratio)):
+                    zone_weight_grid[x,y] += ((height * linear_ratio) - x) *  linear_factor
                 #weight the top bar a little
                 if (x > (height - top_bar_size)):
-                    zone_weight_grid.data[x * width + y] += top_bar_weight
+                    zone_weight_grid[x,y] += top_bar_weight
                 #quadratic rating on the center
                 #change the weighting as needed
-                zone_weight_grid.data[x * width + y] += int(quadratic_factor * pow(abs(width/2 - y), 2))
+                zone_weight_grid[x,y] += quadratic_factor * pow(abs(width/2 - y), 2)
+
+                #set this to max if it's greater
+
+                #I've just thought of something. Last year we used a matrix to store the costs. This year we're just using inflation grids.
                 y+=1
         x+=1
 
