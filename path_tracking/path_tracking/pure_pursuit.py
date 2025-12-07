@@ -4,7 +4,7 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from geometry_msgs.msg import Twist, PoseStamped, Quaternion
 from nav_msgs.msg import Odometry, Path
-import asyncio
+# import asyncio
 import math
 import time
 import numpy as np
@@ -18,14 +18,14 @@ class PurePursuitNode(Node):
         # Parameters
         # self.max_linear_speed = 0.6
         self.max_angular_speed: float = 0.6
-        self.base_lookahead: float = 0.1
-        self.k_speed: float = 0.55
-        self.visited: int = 0
-        self.speed_factor: float = 1
+        self.base_lookahead: float = 0.1 # base lookahead distance
+        self.k_speed: float = 0.55 # scaling factor for current speed when calculating lookahead distance
+        self.visited: int = 0 # index of last visited/processed point in path when finding lookahead point
+        # self.speed_factor: float = 1
 
         # State
-        self.smoothed_path_points: list[(float, float)] = []
-        self.pose: tuple[float, float, float] | None = None
+        self.smoothed_path_points: list[(float, float)] = [] # x, y
+        self.pose: tuple[float, float, float] | None = None # x, y, yaw
         self.reached_goal: bool = False
         self.current_speed: float = 0.0
 
@@ -44,7 +44,7 @@ class PurePursuitNode(Node):
         )
 
         self.speed_percent: float = 2.0
-        self.exec_percent: float = 0.6
+        # self.exec_percent: float = 0.6
 
         # asyncio.create_task(self.update_vals())
 
@@ -53,21 +53,20 @@ class PurePursuitNode(Node):
 
         # threading.Thread(target=self.helper, daemon=True).start()
 
-    def helper(self) -> None:
-        asyncio.run(self.update_vals())
+    # def helper(self) -> None:
+    #     asyncio.run(self.update_vals())
 
-    async def update_vals(self) -> None:
-        await asyncio.sleep(1)
+    # async def update_vals(self) -> None:
+    #     await asyncio.sleep(1)
 
-       
         self.speed_percent = 2
-        self.exec_percent = 0.6
+        # self.exec_percent = 0.6
         print("change vals to")
         print(self.speed_percent)
-        print(self.exec_percent)
-
+        # print(self.exec_percent)
 
     def path_callback(self, path_msg: Path) -> None:
+        # Smooth incoming path and reset state variables
         self.get_logger().info('Received a new path from subscription.')
 
         self.smoothed_path_points = self.smooth_path_spline(path_msg)
@@ -77,16 +76,18 @@ class PurePursuitNode(Node):
         while not self.reached_goal and rclpy.ok():
             time.sleep(0.05)
 
+        # Clear the smoothed path when the goal is reached
         self.smoothed_path_points = []
-    
-  
+
     def smooth_path_spline(self, path: Path, smoothing: float = 0.1) -> list[(float, float)]:
+        # Fit a B-spline to the waypoints in the path
+
+        # Need at least 4 points to fit a spline, return the original path if < 4 points
         if len(path.poses) <= 3:
             return [(pose_stamped.pose.position.x, pose_stamped.pose.position.y) for pose_stamped in path.poses]
 
         x = [pose_stamped.pose.position.x for pose_stamped in path.poses]
         y = [pose_stamped.pose.position.y for pose_stamped in path.poses]
-
         
         # Fit spline with no periodicity, and smoothing factor `s`
         tck, _ = splprep([x, y], s=smoothing, per=0)
@@ -99,6 +100,7 @@ class PurePursuitNode(Node):
         return list(zip(x_smooth, y_smooth))
 
     def odom_callback(self, msg: Odometry) -> None:
+        # Calculate and update the pose and current speed
         pos = msg.pose.pose.position
         ori = msg.pose.pose.orientation
         self.pose = (pos.x, pos.y, self.get_yaw_from_quaternion(ori))
@@ -112,6 +114,7 @@ class PurePursuitNode(Node):
         return math.atan2(siny_cosp, cosy_cosp)
 
     def find_lookahead_point(self) -> tuple[float, float] | None:
+        # Find point on path to move toward based on current pose, smoothed path, and current speed
         if self.pose is None or not self.smoothed_path_points:
             return None
 
@@ -126,7 +129,6 @@ class PurePursuitNode(Node):
             self.get_logger().info('REACHED GOAL')
             self.reached_goal = True
             return None
-
 
         # Try to find interpolated segment intersection
         # Allows one index backwards due to adaptive lookahead
@@ -175,9 +177,11 @@ class PurePursuitNode(Node):
         self.get_logger().warn('No valid lookahead point found – stopping')
         return None
     
-    
     def control_loop(self) -> None:
+        # Calculate and publish the linear and angular velocity to drive toward the lookahead point
         local_point = self.find_lookahead_point()
+
+        # If no valid lookahead point found, stop (i.e., publish message with zero velocity)
         if local_point is None:
             self.cmd_pub.publish(Twist())
             return
@@ -210,8 +214,8 @@ class PurePursuitNode(Node):
         cmd.angular.z = angular
         self.cmd_pub.publish(cmd)
 
-
     def publish_path(self) -> None:
+        # Create and publish a nav_msgs/msg/Path.msg using the smoothed path points
         if not self.smoothed_path_points:
             return
         path_msg = Path()
@@ -228,7 +232,6 @@ class PurePursuitNode(Node):
             path_msg.poses.append(pose)
         self.path_pub.publish(path_msg)
 
-
 def main(args=None):
     rclpy.init(args=args)
     node = PurePursuitNode()
@@ -239,7 +242,6 @@ def main(args=None):
 
     node.destroy_node()
     rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()
