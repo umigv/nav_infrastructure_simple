@@ -229,6 +229,7 @@ def generate_zone_weighting(
         top_bar_size: int = 5,
         top_bar_weight: int = 5
 ):
+    """Generates the weighting grid of an occupancy grid of a given size. May need to play with default weightings, but be aware that they will be rounded to ints."""
 
     zone_weight_grid = grid
     #hopefully this doesn't cause pointer weirdness
@@ -243,7 +244,7 @@ def generate_zone_weighting(
                 zone_weight_grid.data[x * width + y] = 0
                 
                 if (x <= (height * linear_ratio)):
-                    zone_weight_grid.data[x * width + y] += ((height * linear_ratio) - x) *  linear_factor
+                    zone_weight_grid.data[x * width + y] += int(((height * linear_ratio) - x) *  linear_factor)
                 #weight the top bar a little
                 if (x > (height - top_bar_size)):
                     zone_weight_grid.data[x * width + y] += top_bar_weight
