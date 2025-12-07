@@ -30,7 +30,14 @@ private:
 
         pub_->publish(inflated_grid);
     }    
-
+/** 
+ *  @brief Takes an occupancy grid from CV and makes the space around the obstacles less driveable.
+ *  @param grid The grid to be inflated
+ *  @param radius The radius of inflation
+ *  @param add_on Used to calculate the area check for inflation
+ *  @param decrease_factor: how quickly the inflation decreases as it moves away from an obstacle.
+ *  @returns Nothing
+ */
     void inflateObstacles(nav_msgs::msg::OccupancyGrid &grid, int radius, int add_on, double decrease_factor) {
         int width = grid.info.width;
         int height = grid.info.height;

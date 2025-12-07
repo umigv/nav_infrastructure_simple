@@ -26,11 +26,13 @@ class PointSimulator(Node):
         self.last_cmd_time = time.time()
 
     def cmd_vel_callback(self, msg):
+        """Sets the robot velocity and updates when robot last recieved command. Called from the joystick subcription."""
         self.vx = msg.linear.x
         self.vtheta = msg.angular.z
         self.last_cmd_time = self.get_clock().now().nanoseconds 
 
     def update_position(self):
+        """Sets the robot's current position based on velocity; publishes odometry and position data."""
         current_time = self.get_clock().now().nanoseconds
         dt = (current_time - self.last_time) / 1e9  # Convert nanoseconds to seconds
         self.last_time = current_time
