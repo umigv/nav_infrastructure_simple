@@ -1,6 +1,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
+static constexpr double ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW = -0.60; // meters
+
 class OccupancyGridInflation : public rclcpp::Node {
 public:
 
@@ -21,8 +23,9 @@ private:
 
         inflateObstacles(inflated_grid, 10, 20, 0.9); // 10
         inflated_grid.header.frame_id = "odom";
-        inflated_grid.info.origin.position.set__x(-12 * inflated_grid.info.resolution);
-        inflated_grid.info.origin.position.set__y(77 * inflated_grid.info.resolution);
+        inflated_grid.info.origin.position.set__x(-ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW);
+        inflated_grid.info.origin.position.set__y(inflated_grid.info.width / 2* inflated_grid.info.resolution);
+        // rotate to match +x forwards, +y left
         inflated_grid.info.origin.orientation.set__z(-0.7071068);
         inflated_grid.info.origin.orientation.set__w(0.7071068);
     
