@@ -6,7 +6,7 @@ public:
 
     OccupancyGridInflation() : Node("occupancy_grid_inflation") {
         sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-            "/occupancy_grid", 10, std::bind(&OccupancyGridInflation::mapCallback, this, std::placeholders::_1));
+            "/occ_grid", 10, std::bind(&OccupancyGridInflation::mapCallback, this, std::placeholders::_1));
         pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/inflated_occupancy_grid", 10);
 
         latest_grid_ = nullptr;
