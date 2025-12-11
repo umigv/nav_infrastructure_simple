@@ -68,6 +68,13 @@ class GoalSelectionNode(Node):
             10
         )
 
+        self.create_subscription(
+            Point,
+            "/waypoint_override",
+            self.waypoint_override_callback,
+            10
+        )
+
         self.path_publisher = self.create_publisher(
             Path,
             "/path",
@@ -106,6 +113,13 @@ class GoalSelectionNode(Node):
         )
 
         self.get_logger().info(f"Robot relative waypoint: {self.waypoint_robot_relative}")
+
+    def waypoint_override_callback(self, waypoint: Point):
+        """Override waypoint to specified value"""
+        if self.odometry is None:
+            return
+        
+        self.waypoint_robot_relative = waypoint
 
     def inflated_occupancy_grid_callback(self, new_occupancy_grid: OccupancyGrid):
         """Store latest inflated occupancy grid."""
