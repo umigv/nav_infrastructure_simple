@@ -16,6 +16,7 @@ class OccupancyGridIndex:
     """Store the coordinates to a spot in the occupancy grid."""
     y: int # +y = left
     x: int # +x = forward
+    # (y=0, x=0) is the robot position (i.e. robot is origin)
 
 @dataclass(order=True)
 class IndexAndCost:
