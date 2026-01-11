@@ -5,9 +5,10 @@ from geometry_msgs.msg import Point, Quaternion, Twist
 
 from collections import deque
 
-from typing import Deque, Tuple, Optional
+from typing import Deque, Optional
 
 from dataclasses import dataclass
+from pyproj import Transformer
 
 @dataclass
 class Coordinate:
@@ -19,8 +20,16 @@ class GpsCoordinate:
     longitude: float
     latitude: float
 
+GPS_TRANSFORMER = Transformer.from_crs("EPSG:4326", "EPSG:32617", always_xy=True)
+
+def gpsCoordToCoord(coord: GpsCoordinate) -> Coordinate:
+    easting_m, northing_m = GPS_TRANSFORMER.transform(coord.longitude, coord.latitude)
+    return Coordinate(x=easting_m, y=northing_m)
+
 def toCoordinate(gps_coord: GpsCoordinate, origin: GpsCoordinate) -> Coordinate:
-    pass
+    origin_coord = gpsCoordToCoord(origin)
+    gps_coord = gpsCoordToCoord(gps_coord)
+    return Coordinate(x=gps_coord.x - origin_coord.x, y=gps_coord.y - origin_coord.y)
 
 class GpsOdomFusion(Node):
     def __init__(self):
@@ -41,8 +50,9 @@ class GpsOdomFusion(Node):
 
         self.initial_gps_readings: Deque[GpsCoordinate] = deque()
 
+
     def odom_callback(self, msg: Odometry) -> None:
-        if not self.gps_origin:
+        if self.gps_origin is None:
             self.prev_odom = msg
             return
 
@@ -52,16 +62,19 @@ class GpsOdomFusion(Node):
         coord = GpsCoordinate(longitude=msg.longitude, latitude=msg.latitude)
 
         if self.gps_origin is None:
-            self.initialize_gps(coord)
+            self.initialize_state(coord)
             return
         
-        # TODO: update global odom x/y with gps data
+        gps_position = toCoordinate(coord, self.gps_origin)
+        self.global_odom.pose.pose.position.x = gps_position.x
+        self.global_odom.pose.pose.position.y = gps_position.y
+        self.global_odom.header.stamp = msg.header.stamp
 
     def publish_global_odom(self) -> None:
         if self.global_odom:
             self.global_odom_publisher.publish(self.global_odom)
 
-    def initialize_gps(self, coord: GpsCoordinate) -> None:
+    def initialize_state(self, coord: GpsCoordinate) -> None:
         self.initial_gps_readings.append(coord)
 
         if len(self.initial_gps_readings) < 10:
@@ -80,5 +93,4 @@ class GpsOdomFusion(Node):
             self.global_odom.pose.pose.orientation = self.prev_odom.pose.pose.orientation
             self.global_odom.twist.twist = self.prev_odom.twist.twist
         else:
-            self.global_odom.pose.pose.orientation = Quaternion()
-            self.global_odom.twist.twist = Twist()
+            self.global_odom.pose.pose.orientation = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
