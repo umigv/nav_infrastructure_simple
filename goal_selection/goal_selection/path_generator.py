@@ -14,13 +14,176 @@ from std_msgs.msg import Header
 
 @dataclass(unsafe_hash=True)
 class OccupancyGridIndex:
+    """Store the coordinates to a spot in the occupancy grid."""
     y: int # +y = left
     x: int # +x = forward
 
 @dataclass(order=True)
 class IndexAndCost:
+    """Store the coordinates to a node and the cost of that node."""
     cost: float
     index: OccupancyGridIndex = field(compare=False)
+
+ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW = -0.60
+
+
+
+
+# Used as an placeholder for algorithms that use occupancy grid indices, 
+# since it is not a possible value to reach.
+NULL_OCC_GRID_INDEX = OccupancyGridIndex(y=-1, x=-1)
+# The robot's position within the occupancy grid is constant, since the camera
+# is fixed to the robot.
+ROBOT_POSITION_IN_OCC_GRID = OccupancyGridIndex(y=77, x=12)
+# What value on the occupancy grid represents drivable area
+DRIVABLE_CELL_VALUE = 0
+
+
+
+
+def index_occupancy_grid(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex):
+    """Index occupancy grid 1D data array using 2D coordinates."""
+    return occupancy_grid.data[(index.x + ROBOT_POSITION_IN_OCC_GRID.x) * occupancy_grid.info.width + -index.y + ROBOT_POSITION_IN_OCC_GRID.y]
+
+
+def get_yaw_radians_from_quaternion(q: Quaternion):
+    """Extract radians of yaw rotation from Quaternion https://en.wikipedia.org/wiki/Quaternion."""
+    siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+    cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+    return math.atan2(siny_cosp, cosy_cosp)
+
+def convert_occupancy_grid_index_to_robot_relative_position(
+    occupancy_grid_resolution: float,
+    occupancy_grid_coordinates: OccupancyGridIndex,
+    robot_pose: Pose
+) -> Point:
+    """Convert from occupancy grid coordinates to 'meters from the robot'."""
+    yaw_radians = get_yaw_radians_from_quaternion(robot_pose.orientation)
+
+    rotated_occ_point_with_robot_occ_origin = Point(
+        x=occupancy_grid_coordinates.x * math.cos(yaw_radians) - occupancy_grid_coordinates.y * math.sin(yaw_radians),
+        y=occupancy_grid_coordinates.x * math.sin(yaw_radians) + occupancy_grid_coordinates.y * math.cos(yaw_radians)
+    )
+
+    return Point(
+        x=rotated_occ_point_with_robot_occ_origin.x * occupancy_grid_resolution + robot_pose.position.x,
+        y=rotated_occ_point_with_robot_occ_origin.y * occupancy_grid_resolution + robot_pose.position.y
+    )
+
+def find_closest_drivable_point(occupancy_grid: OccupancyGrid) -> OccupancyGridIndex | None:
+    """
+    The robot is in unknown space in the occupancy grid, meaning we don't know if its
+    current location and the location around it is drivable. 
+    
+    To account for this, we search for the closest drivable node, starting from the node
+    containing the robot.
+    """
+    visited: set[OccupancyGridIndex] = set()
+    search_container: deque[OccupancyGridIndex] = deque()
+
+    current_position = OccupancyGridIndex(y=0, x=-int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution))
+    visited.add(current_position)
+    search_container.append(current_position)
+    
+    while len(search_container) > 0:
+        index = search_container.popleft()
+
+        # Start by searching forwards, then forwards-left, forwards-right, and finally
+        # just left and right. Searching backwards is not necessary because all nodes
+        # behind the robot are of unknown value.
+        for dy, dx in [
+            (0, 1),
+            (1, 1),
+            (-1, 1),
+            (1, 0),
+            (-1, 0)
+        ]:
+            potential_position = OccupancyGridIndex(
+                y=index.y + dy,
+                x=index.x + dx
+            )
+
+            #somewhere in this block of ifs is causing the indexing issue. Should be the third if. Also could be an addition v. subtraction error on the first
+
+            if -potential_position.y + ROBOT_POSITION_IN_OCC_GRID.y < 0 or -potential_position.y + ROBOT_POSITION_IN_OCC_GRID.y >= occupancy_grid.info.width\
+                or potential_position.x + ROBOT_POSITION_IN_OCC_GRID.x < 0 or potential_position.x + ROBOT_POSITION_IN_OCC_GRID.x >= occupancy_grid.info.height:
+                continue
+
+            if potential_position in visited:
+                continue
+
+            if index_occupancy_grid(occupancy_grid, potential_position) == DRIVABLE_CELL_VALUE:
+                return potential_position
+            
+            search_container.append(potential_position)
+            visited.add(potential_position)
+    
+    return None
+
+def index_cost(
+    occupancy_grid_resolution: float,
+    index: OccupancyGridIndex,
+    robot_pose: Pose,
+    waypoint_robot_relative: Point
+) -> float:
+    """
+    Calculate cost of a node on the occupancy grid as its Euclidean distance from
+    the goal node.
+    """
+    index_robot_relative_coords = convert_occupancy_grid_index_to_robot_relative_position(
+        occupancy_grid_resolution,
+        index,
+        robot_pose
+    )
+
+
+
+    return math.sqrt(
+        (index_robot_relative_coords.x - waypoint_robot_relative.x) ** 2
+        + (index_robot_relative_coords.y - waypoint_robot_relative.y) ** 2
+    )
+#once we get to testing: because we're adding, may need to make sure the values don't exceed 100. Will probably need to be toned down a lot to align with the rest of priority.
+def generate_zone_weighting(
+        grid: OccupancyGrid,
+        #keep all of the weighting values integers--if need to adjust for granularity, round up/down
+        quadratic_factor: float = .25,
+        linear_factor: float = 1,
+        linear_ratio:  float = .75,
+        top_bar_size: int = 30,
+        top_bar_weight: int = 15
+):
+    """Generates the weighting grid of an occupancy grid of a given size as a 2D Numpy Array. Will need to play with default weightings"""
+
+
+    #hopefully this doesn't cause pointer weirdness
+    width = grid.info.width
+    height = grid.info.height
+
+    zone_weight_grid = zeros((grid.info.height, grid.info.width))
+
+    x=0
+    while (x < height): 
+        y=0
+        while (y < width): 
+               #weight the bottom. this is weighted assuming the top is 0.
+                if (x >= (height * linear_ratio)):
+                    zone_weight_grid[x,y] += x *  linear_factor
+                #weight the top bar a little. this is weighted assuming the top is 0.
+                if (x < top_bar_size):
+                    zone_weight_grid[x,y] += top_bar_weight
+                #quadratic rating on the center
+                #change the weighting as needed
+                zone_weight_grid[x,y] += quadratic_factor * pow(abs(width/2 - y), 2)
+
+                #set this to max if it's greater
+
+                #I've just thought of something. Last year we used a matrix to store the costs. This year we're just using inflation grids.
+                y+=1
+        x+=1
+
+        
+
+    return zone_weight_grid
 
 
 def generate_path_occupancy_grid_indices(
@@ -121,155 +284,16 @@ def generate_path_occupancy_grid_indices(
     return reversed(backtrace)
 
 
-
-NULL_OCC_GRID_INDEX = OccupancyGridIndex(y=-1, x=-1)
-ROBOT_POSITION_IN_OCC_GRID = OccupancyGridIndex(y=77, x=12)
-DRIVABLE_CELL_VALUE = 0
-
-
-
-
-def index_occupancy_grid(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex):
-    return occupancy_grid.data[index.x * occupancy_grid.info.width + index.y]
-
-
-def get_yaw_radians_from_quaternion(q: Quaternion):
-    siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
-    cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-    return math.atan2(siny_cosp, cosy_cosp)
-
-def convert_occupancy_grid_index_to_robot_relative_position(
-    occupancy_grid_resolution: float,
-    occupancy_grid_coordinates: OccupancyGridIndex,
-    robot_pose: Pose
-) -> Point:
-    yaw_radians = get_yaw_radians_from_quaternion(robot_pose.orientation)
-
-    occ_point_with_robot_occ_origin = OccupancyGridIndex(
-        y=occupancy_grid_coordinates.y - ROBOT_POSITION_IN_OCC_GRID.y,
-        x=occupancy_grid_coordinates.x - ROBOT_POSITION_IN_OCC_GRID.x
-    )
-
-    rotated_occ_point_with_robot_occ_origin = Point(
-        x=occ_point_with_robot_occ_origin.x * math.cos(yaw_radians) - occ_point_with_robot_occ_origin.y * math.sin(yaw_radians),
-        y=occ_point_with_robot_occ_origin.x * math.sin(yaw_radians) + occ_point_with_robot_occ_origin.y * math.cos(yaw_radians)
-    )
-
-    return Point(
-        x=rotated_occ_point_with_robot_occ_origin.x * occupancy_grid_resolution + robot_pose.position.x,
-        y=rotated_occ_point_with_robot_occ_origin.y * occupancy_grid_resolution + robot_pose.position.y
-    )
-
-# The robot is in unknown space in the occupancy grid, 
-# so we traverse forwards until we find the first drivable index.
-#
-# If going forward is not enough, we then traverse left and right as well
-def find_closest_drivable_point(occupancy_grid: OccupancyGrid) -> OccupancyGridIndex | None:
-    visited: set[OccupancyGridIndex] = set()
-    search_container: deque[OccupancyGridIndex] = deque()
-
-    current_position = dataclasses.replace(ROBOT_POSITION_IN_OCC_GRID)
-    visited.add(current_position)
-    search_container.append(current_position)
-    
-    while len(search_container) > 0:
-        index = search_container.popleft()
-
-        for dy, dx in [
-            (0, 1),
-            (1, 1),
-            (-1, 1),
-            (1, 0),
-            (-1, 0)
-        ]:
-            potential_position = OccupancyGridIndex(
-                y=index.y + dy,
-                x=index.x + dx
-            )
-
-            if potential_position.y < 0 or potential_position.y >= occupancy_grid.info.width\
-                or potential_position.x < 0 or potential_position.x >= occupancy_grid.info.height:
-                continue
-
-            if potential_position in visited:
-                continue
-
-            if index_occupancy_grid(occupancy_grid, potential_position) == DRIVABLE_CELL_VALUE:
-                return potential_position
-            
-            search_container.append(potential_position)
-            visited.add(potential_position)
-    
-    return None
-
-def index_cost(
-    occupancy_grid_resolution: float,
-    index: OccupancyGridIndex,
-    robot_pose: Pose,
-    waypoint_robot_relative: Point
-) -> float:
-    index_robot_relative_coords = convert_occupancy_grid_index_to_robot_relative_position(
-        occupancy_grid_resolution,
-        index,
-        robot_pose
-    )
-
-
-
-    return math.sqrt(
-        (index_robot_relative_coords.x - waypoint_robot_relative.x) ** 2
-        + (index_robot_relative_coords.y - waypoint_robot_relative.y) ** 2
-    )
-#once we get to testing: because we're adding, may need to make sure the values don't exceed 100. Will probably need to be toned down a lot to align with the rest of priority.
-def generate_zone_weighting(
-        grid: OccupancyGrid,
-        #keep all of the weighting values integers--if need to adjust for granularity, round up/down
-        quadratic_factor: float = .25,
-        linear_factor: float = 1,
-        linear_ratio:  float = .75,
-        top_bar_size: int = 30,
-        top_bar_weight: int = 15
-):
-    """Generates the weighting grid of an occupancy grid of a given size as a 2D Numpy Array. Will need to play with default weightings"""
-
-
-    #hopefully this doesn't cause pointer weirdness
-    width = grid.info.width
-    height = grid.info.height
-
-    zone_weight_grid = zeros((grid.info.height, grid.info.width))
-
-    x=0
-    while (x < height): 
-        y=0
-        while (y < width): 
-               #weight the bottom. this is weighted assuming the top is 0.
-                if (x >= (height * linear_ratio)):
-                    zone_weight_grid[x,y] += x *  linear_factor
-                #weight the top bar a little. this is weighted assuming the top is 0.
-                if (x < top_bar_size):
-                    zone_weight_grid[x,y] += top_bar_weight
-                #quadratic rating on the center
-                #change the weighting as needed
-                zone_weight_grid[x,y] += quadratic_factor * pow(abs(width/2 - y), 2)
-
-                #set this to max if it's greater
-
-                #I've just thought of something. Last year we used a matrix to store the costs. This year we're just using inflation grids.
-                y+=1
-        x+=1
-
-        
-
-    return zone_weight_grid
-
-
 def generate_path(
     goal_selection_node: Node,
     occupancy_grid: OccupancyGrid,
     robot_pose: Pose,
     waypoint_robot_relative: Point,
 ) -> Path:
+    """
+    Generate path in occupancy grid indices coordinate system, convert it to robot
+    relative coodinates, and package it in a nav_msgs.msg.Path message.
+    """
     start_point = find_closest_drivable_point(occupancy_grid)
     assert start_point is not None, "Could not find drivable area in front of robot!"
 

@@ -12,6 +12,7 @@ class TestMovement(Node):
         self.get_logger().info("Test movement node started.")
 
     def move_sequence(self):
+        """Runs the robot through a series of sample movements to test."""
         cmd = Twist()
 
         # Move forward
