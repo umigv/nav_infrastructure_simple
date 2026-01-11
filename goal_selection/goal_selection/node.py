@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import json
 import math
 import pathlib
@@ -8,6 +9,7 @@ from goal_selection import path_generator
 from nav_msgs.msg import Odometry, Path, OccupancyGrid
 import rclpy
 from sensor_msgs.msg import NavSatFix
+from std_msgs.msg import Header
 from rclpy.node import Node, Publisher
 from pyproj import Transformer
 
@@ -31,6 +33,11 @@ def lat_long_to_meters(latitude: float, longitude: float) -> tuple[float, float]
     return transformer.transform(longitude, latitude)
 
 
+@dataclass
+class GPSWaypoint:
+    latitude: float
+    longitude: float
+
 # Waypoints are constant goals, supplied by the competition organizer
 WAYPOINTS_FILE_PATH = pathlib.Path("/home/arv/arv-ws/src/nav_infrastructure_simple/goal_selection/waypoints.json")
 # How often a path is generated and published, in seconds.
@@ -45,6 +52,10 @@ class GoalSelectionNode(Node):
     inflated_occupancy_grid: OccupancyGrid | None = None
     # The publisher for generated paths
     path_publisher: Publisher
+    # The hardcoded waypoints for the course
+    waypoints: list[GPSWaypoint] = []
+    # Index of waypoint that we are currently trying to travel to
+    current_waypoint_index: int = 0
 
     def __init__(self):
         """Initialize goal selection node."""
@@ -71,13 +82,6 @@ class GoalSelectionNode(Node):
             10
         )
 
-        self.create_subscription(
-            Point,
-            "/waypoint_override",
-            self.waypoint_override_callback,
-            10
-        )
-
         self.path_publisher = self.create_publisher(
             Path,
             "/path",
@@ -85,6 +89,15 @@ class GoalSelectionNode(Node):
         )
 
         self.create_timer(PATH_PUBLISH_PERIOD_SECONDS, self.generate_and_publish_path)
+
+        with open(WAYPOINTS_FILE_PATH, "r") as waypoints_file:
+            for waypoint_json_object in json.load(waypoints_file)["waypoints"]:
+                self.waypoints.append(
+                    GPSWaypoint(
+                        latitude=waypoint_json_object["latitude"],
+                        longitude=waypoint_json_object["longitude"]
+                    )
+                )
 
     def odometry_callback(self, new_odometry: Odometry):
         """Store odometry data into member variable."""
@@ -98,31 +111,33 @@ class GoalSelectionNode(Node):
         TODO: Currently always choses the first waypoint in the list, but should choose
         the logically next waypoint.
         """
-        if self.odometry is None:
+        if self.odometry is None or self.current_waypoint_index >= len(self.waypoints):
+            self.waypoint_robot_relative = None
             return
+        
+        current_waypoint = self.waypoints[self.current_waypoint_index]
 
-        waypoints: Any
-        with open(WAYPOINTS_FILE_PATH, "r") as waypoints_file:
-            waypoints = json.load(waypoints_file)["waypoints"]
-
-        current_waypoint = waypoints[0]
-
-        current_long_meters, current_lat_meters = lat_long_to_meters(current_waypoint['latitude'], current_waypoint['longitude'])
+        current_waypoint_long_meters, current_waypoint_lat_meters = lat_long_to_meters(current_waypoint.latitude, current_waypoint.longitude)
         new_long_meters, new_lat_meters = lat_long_to_meters(new_gps_data.latitude, new_gps_data.longitude)
 
         self.waypoint_robot_relative = Point(
-            x=current_lat_meters-new_lat_meters,
-            y=-(current_long_meters-new_long_meters)
+            x=current_waypoint_lat_meters-new_lat_meters,
+            y=-(current_waypoint_long_meters-new_long_meters)
         )
 
-        self.get_logger().info(f"Robot relative waypoint: {self.waypoint_robot_relative}")
+        dist_to_waypoint = math.hypot(self.waypoint_robot_relative.x, self.waypoint_robot_relative.y)
 
-    def waypoint_override_callback(self, waypoint: Point):
-        """Override waypoint to specified value"""
-        if self.odometry is None:
-            return
-        
-        self.waypoint_robot_relative = waypoint
+        self.get_logger().info(
+            f"Current waypoint: {current_waypoint}\n" + 
+            f"New GPS Data: {new_gps_data}\n" + 
+            f"Dist to waypoint: {dist_to_waypoint}"
+        )
+
+        if dist_to_waypoint < 1:
+            self.current_waypoint_index += 1
+            self.gps_callback(new_gps_data)
+
+        self.get_logger().info(f"Robot relative waypoint: {self.waypoint_robot_relative}")
 
     def inflated_occupancy_grid_callback(self, new_occupancy_grid: OccupancyGrid):
         """Store latest inflated occupancy grid."""
@@ -131,6 +146,14 @@ class GoalSelectionNode(Node):
     def generate_and_publish_path(self):
         """Generate and publish path for robot to follow."""
         if self.inflated_occupancy_grid is None or self.odometry is None or self.waypoint_robot_relative is None:
+            self.path_publisher.publish(
+                Path(
+                    header=Header(
+                        frame_id="odom"
+                    ),
+                    poses=[]
+                )
+            )
             return
 
         path = path_generator.generate_path(
