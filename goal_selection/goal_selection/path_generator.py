@@ -4,7 +4,7 @@ import itertools
 import json
 import math
 import sys
-import numpy as np
+from numpy import ndarray, zeros
 from collections import deque
 import heapq
 from nav_msgs.msg import OccupancyGrid, Path
@@ -29,7 +29,7 @@ def generate_path_occupancy_grid_indices(
     start_index: OccupancyGridIndex,
     robot_pose: Pose,
     waypoint_robot_relative: Point,
-    zone_weighting: np.ndarray
+    zone_weighting: ndarray
 ):
     came_from: dict[OccupancyGridIndex, OccupancyGridIndex] = {}
     cost_so_far: dict[OccupancyGridIndex, float] = {}
@@ -227,7 +227,7 @@ def generate_zone_weighting(
         quadratic_factor: float = .25,
         linear_factor: float = 1,
         linear_ratio:  float = .75,
-        top_bar_size: int = 5,
+        top_bar_size: int = 30,
         top_bar_weight: int = 15
 ):
     """Generates the weighting grid of an occupancy grid of a given size as a 2D Numpy Array. Will need to play with default weightings"""
@@ -237,17 +237,17 @@ def generate_zone_weighting(
     width = grid.info.width
     height = grid.info.height
 
-    zone_weight_grid = np.zeros((grid.info.height, grid.info.width))
+    zone_weight_grid = zeros((grid.info.height, grid.info.width))
 
     x=0
     while (x < height): 
         y=0
         while (y < width): 
-               
+               #weight the bottom. this is weighted assuming the top is 0.
                 if (x >= (height * linear_ratio)):
-                    zone_weight_grid[x,y] += ((height * linear_ratio) - x) *  linear_factor
-                #weight the top bar a little
-                if (x > (height - top_bar_size)):
+                    zone_weight_grid[x,y] += x *  linear_factor
+                #weight the top bar a little. this is weighted assuming the top is 0.
+                if (x < top_bar_size):
                     zone_weight_grid[x,y] += top_bar_weight
                 #quadratic rating on the center
                 #change the weighting as needed

@@ -39,7 +39,7 @@ class PurePursuitNode(Node):
             Path,
             '/path',
             self.path_callback,
-            10,
+            1,
             callback_group=self.cb_group
         )
 
@@ -81,6 +81,7 @@ class PurePursuitNode(Node):
     
   
     def smooth_path_spline(self, path: Path, smoothing=0.1):
+        self.get_logger().info(str(len(path.poses)))
         if len(path.poses) <= 3:
             return [(pose_stamped.pose.position.x, pose_stamped.pose.position.y) for pose_stamped in path.poses]
 

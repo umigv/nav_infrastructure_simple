@@ -57,7 +57,7 @@ class GoalSelectionNode(Node):
         self.path_publisher = self.create_publisher(
             Path,
             "/path",
-            10
+            1
         )
 
         self.create_timer(PATH_PUBLISH_PERIOD_SECONDS, self.generate_and_publish_path)
