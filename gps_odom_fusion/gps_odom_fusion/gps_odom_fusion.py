@@ -1,0 +1,96 @@
+from rclpy.node import Node
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import NavSatFix
+from geometry_msgs.msg import Point, Quaternion, Twist
+
+from collections import deque
+
+from typing import Deque, Optional
+
+from dataclasses import dataclass
+from pyproj import Transformer
+
+@dataclass
+class Coordinate:
+    x: float
+    y: float
+
+@dataclass
+class GpsCoordinate:
+    longitude: float
+    latitude: float
+
+GPS_TRANSFORMER = Transformer.from_crs("EPSG:4326", "EPSG:32617", always_xy=True)
+
+def gpsCoordToCoord(coord: GpsCoordinate) -> Coordinate:
+    easting_m, northing_m = GPS_TRANSFORMER.transform(coord.longitude, coord.latitude)
+    return Coordinate(x=easting_m, y=northing_m)
+
+def toCoordinate(gps_coord: GpsCoordinate, origin: GpsCoordinate) -> Coordinate:
+    origin_coord = gpsCoordToCoord(origin)
+    gps_coord = gpsCoordToCoord(gps_coord)
+    return Coordinate(x=gps_coord.x - origin_coord.x, y=gps_coord.y - origin_coord.y)
+
+class GpsOdomFusion(Node):
+    def __init__(self):
+        super().__init__('gps_odom_fusion')
+
+        # Subscription
+        self.odom_subscription = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
+        self.gps_subscription = self.create_subscription(NavSatFix, "/gps_coords", self.gps_callback, 10)
+
+        # Publisher
+        self.global_odom_publisher = self.create_publisher(Odometry, "/odom_global", 10)
+        self.create_timer(0.01, self.publish_global_odom)
+
+        # State
+        self.gps_origin: Optional[GpsCoordinate] = None
+        self.global_odom: Optional[Odometry] = None
+        self.prev_odom: Optional[Odometry] = None
+
+        self.initial_gps_readings: Deque[GpsCoordinate] = deque()
+
+
+    def odom_callback(self, msg: Odometry) -> None:
+        if self.gps_origin is None:
+            self.prev_odom = msg
+            return
+
+        # TODO: integrate global odom with odom differential
+
+    def gps_callback(self, msg: NavSatFix) -> None:
+        coord = GpsCoordinate(longitude=msg.longitude, latitude=msg.latitude)
+
+        if self.gps_origin is None:
+            self.initialize_state(coord)
+            return
+        
+        gps_position = toCoordinate(coord, self.gps_origin)
+        self.global_odom.pose.pose.position.x = gps_position.x
+        self.global_odom.pose.pose.position.y = gps_position.y
+        self.global_odom.header.stamp = msg.header.stamp
+
+    def publish_global_odom(self) -> None:
+        if self.global_odom:
+            self.global_odom_publisher.publish(self.global_odom)
+
+    def initialize_state(self, coord: GpsCoordinate) -> None:
+        self.initial_gps_readings.append(coord)
+
+        if len(self.initial_gps_readings) < 10:
+            return
+        
+        avg_lon = sum(coord.longitude for coord in self.initial_gps_readings) / len(self.initial_gps_readings)
+        avg_lat = sum(coord.latitude for coord in self.initial_gps_readings) / len(self.initial_gps_readings)
+        self.gps_origin = GpsCoordinate(longitude=avg_lon, latitude=avg_lat)
+
+        self.global_odom = Odometry()
+        self.global_odom.header.stamp = self.get_clock().now().to_msg()
+        self.global_odom.header.frame_id = "map"
+        self.global_odom.child_frame_id = "base_link"
+
+        if self.prev_odom is not None:
+            self.global_odom.pose.pose.orientation = self.prev_odom.pose.pose.orientation
+            self.global_odom.twist.twist = self.prev_odom.twist.twist
+        else:
+            self.global_odom.pose.pose.orientation = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)

@@ -24,7 +24,7 @@ def lat_long_to_meters(latitude: float, longitude: float) -> tuple[float, float]
     
     TODO: It's correctness should be validated.
     """
-    transformer = Transformer.from_crs("EPSG:4326", "EPSG:32618", always_xy=True)
+    transformer = Transformer.from_crs("EPSG:4326", "EPSG:32617", always_xy=True)
     return transformer.transform(longitude, latitude)
 
 
