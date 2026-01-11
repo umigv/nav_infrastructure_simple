@@ -1,6 +1,14 @@
 # UMARV Navigation Stack 2025-2026
 
 ## Documentation
+
+## Warning: Intellisense
+When building, make sure you include `--symlink-install`. Otherwise, when control clicking a dependency in VSCode, it will take you to a copy of the dependency, instead of the actual source file. For example:
+
+```bash
+colcon build --symlink-install
+```
+
 ### Simulation
 You can run simulation by:
 1. Publishing occupancy grid
@@ -13,13 +21,13 @@ The following describes how to run the point simulator (basic non-physics based 
 
 1. Publish an empty occupancy grid repeatedly:
     ```bash
-    ros2 topic pub --once /occupancy_grid nav_msgs/msg/OccupancyGrid "header:
-    frame_id: 'odom'
+    ros2 topic pub -r 1 /occupancy_grid nav_msgs/msg/OccupancyGrid "header:
+      frame_id: 'odom'
     info:
-    resolution: 0.05
-    width: 155
-    height: 76
-    origin:
+      resolution: 0.05
+      width: 155
+      height: 76
+      origin:
         position: {x: 0.0, y: 0.0, z: 0.0}
         orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
     data: [$(python3 -c 'print(", ".join(["0"]*155*76))')]"

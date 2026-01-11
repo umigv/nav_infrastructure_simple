@@ -13,22 +13,42 @@ from std_msgs.msg import Header
 
 @dataclass(unsafe_hash=True)
 class OccupancyGridIndex:
+    """Store the coordinates to a spot in the occupancy grid."""
     y: int # +y = left
     x: int # +x = forward
+    # (y=0, x=0) is the robot position (i.e. robot is origin)
 
 @dataclass(order=True)
 class IndexAndCost:
+    """Store the coordinates to a node and the cost of that node."""
     cost: float
     index: OccupancyGridIndex = field(compare=False)
 
-NULL_OCC_GRID_INDEX = OccupancyGridIndex(y=-1, x=-1)
-ROBOT_POSITION_IN_OCC_GRID = OccupancyGridIndex(y=77, x=12)
+# The robot's position within the occupancy grid is constant, since the camera
+# is fixed to the robot.
+ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW = -0.60
+# What value on the occupancy grid represents drivable area
 DRIVABLE_CELL_VALUE = 0
 
 def index_occupancy_grid(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex):
-    return occupancy_grid.data[(index.x + ROBOT_POSITION_IN_OCC_GRID.x) * occupancy_grid.info.width + -index.y + ROBOT_POSITION_IN_OCC_GRID.y]
+    """Index occupancy grid 1D data array using 2D coordinates."""
+    x_component = index.x + int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution)
+    y_component = -index.y + occupancy_grid.info.width//2
+    return occupancy_grid.data[x_component * occupancy_grid.info.width + y_component]
+
+def is_index_out_of_bounds(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex) -> bool:
+    """Calculate whether or not index is out of bounds"""
+    # Convert to bottom of left of occupancy origin
+    adjusted_y = -index.y + occupancy_grid.info.width//2
+    adjusted_x = index.x + int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution)
+
+    return adjusted_y < 0 \
+            or adjusted_y >= occupancy_grid.info.width \
+            or adjusted_x < 0 \
+            or adjusted_x >= occupancy_grid.info.height
 
 def get_yaw_radians_from_quaternion(q: Quaternion):
+    """Extract radians of yaw rotation from Quaternion https://en.wikipedia.org/wiki/Quaternion."""
     siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
     cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
     return math.atan2(siny_cosp, cosy_cosp)
@@ -38,6 +58,7 @@ def convert_occupancy_grid_index_to_robot_relative_position(
     occupancy_grid_coordinates: OccupancyGridIndex,
     robot_pose: Pose
 ) -> Point:
+    """Convert from occupancy grid coordinates to 'meters from the robot'."""
     yaw_radians = get_yaw_radians_from_quaternion(robot_pose.orientation)
 
     rotated_occ_point_with_robot_occ_origin = Point(
@@ -50,21 +71,27 @@ def convert_occupancy_grid_index_to_robot_relative_position(
         y=rotated_occ_point_with_robot_occ_origin.y * occupancy_grid_resolution + robot_pose.position.y
     )
 
-# The robot is in unknown space in the occupancy grid, 
-# so we traverse forwards until we find the first drivable index.
-#
-# If going forward is not enough, we then traverse left and right as well
 def find_closest_drivable_point(occupancy_grid: OccupancyGrid) -> OccupancyGridIndex | None:
+    """
+    The robot is in unknown space in the occupancy grid, meaning we don't know if its
+    current location and the location around it is drivable. 
+    
+    To account for this, we search for the closest drivable node, starting from the node
+    containing the robot.
+    """
     visited: set[OccupancyGridIndex] = set()
     search_container: deque[OccupancyGridIndex] = deque()
 
-    current_position = OccupancyGridIndex(y=0, x=0)
+    current_position = OccupancyGridIndex(y=0, x=-int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution))
     visited.add(current_position)
     search_container.append(current_position)
     
     while len(search_container) > 0:
         index = search_container.popleft()
 
+        # Start by searching forwards, then forwards-left, forwards-right, and finally
+        # just left and right. Searching backwards is not necessary because all nodes
+        # behind the robot are of unknown value.
         for dy, dx in [
             (0, 1),
             (1, 1),
@@ -77,8 +104,7 @@ def find_closest_drivable_point(occupancy_grid: OccupancyGrid) -> OccupancyGridI
                 x=index.x + dx
             )
 
-            if -potential_position.y + ROBOT_POSITION_IN_OCC_GRID.y < 0 or -potential_position.y + ROBOT_POSITION_IN_OCC_GRID.y >= occupancy_grid.info.width\
-                or potential_position.x + ROBOT_POSITION_IN_OCC_GRID.x < 0 or potential_position.x + ROBOT_POSITION_IN_OCC_GRID.x >= occupancy_grid.info.height:
+            if is_index_out_of_bounds(occupancy_grid, potential_position):
                 continue
 
             if potential_position in visited:
@@ -98,6 +124,10 @@ def index_cost(
     robot_pose: Pose,
     waypoint_robot_relative: Point
 ) -> float:
+    """
+    Calculate cost of a node on the occupancy grid as its Euclidean distance from
+    the goal node.
+    """
     index_robot_relative_coords = convert_occupancy_grid_index_to_robot_relative_position(
         occupancy_grid_resolution,
         index,
@@ -116,6 +146,12 @@ def generate_path_occupancy_grid_indices(
     robot_pose: Pose,
     waypoint_robot_relative: Point,
 ):
+    """
+    Generate a good path for the robot to follow towards the goal using the A* search
+    algorithm https://en.wikipedia.org/wiki/A*_search_algorithm.
+    
+    Uses occupancy grid indices as the coordinate system.
+    """
     came_from: dict[OccupancyGridIndex, OccupancyGridIndex] = {}
     cost_so_far: dict[OccupancyGridIndex, float] = {}
     priority_queue: list[IndexAndCost] = []
@@ -128,7 +164,13 @@ def generate_path_occupancy_grid_indices(
         waypoint_robot_relative=waypoint_robot_relative
     )
     heapq.heappush(priority_queue, IndexAndCost(cost=start_heuristic, index=start_index))
-    came_from[start_index] = NULL_OCC_GRID_INDEX
+
+    # Used as an placeholder for algorithms that use occupancy grid indices since it 
+    # is not a possible value to reach.
+
+    null_occ_grid_index = OccupancyGridIndex(y=0, x=int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution) - 1)
+
+    came_from[start_index] = null_occ_grid_index
 
     best_goal_index = start_index
     best_goal_distance = start_heuristic
@@ -161,10 +203,10 @@ def generate_path_occupancy_grid_indices(
                 x=current_index.x + dx
             )
 
-            if -neighbor.y + ROBOT_POSITION_IN_OCC_GRID.y < 0 or -neighbor.y + ROBOT_POSITION_IN_OCC_GRID.y >= occupancy_grid.info.width\
-                or neighbor.x + ROBOT_POSITION_IN_OCC_GRID.x < 0 or neighbor.x + ROBOT_POSITION_IN_OCC_GRID.x >= occupancy_grid.info.height:
+            if is_index_out_of_bounds(occupancy_grid, neighbor):
                 continue
 
+            # Cell isn't drivable
             if index_occupancy_grid(occupancy_grid, neighbor) != DRIVABLE_CELL_VALUE:
                 continue
 
@@ -173,6 +215,7 @@ def generate_path_occupancy_grid_indices(
             
             new_cost = current_cost + edge_cost
 
+            # Unexplored node or we found a better way to get to the node
             if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
                 cost_so_far[neighbor] = new_cost
                 came_from[neighbor] = current_index
@@ -189,9 +232,11 @@ def generate_path_occupancy_grid_indices(
 
     goal_selection_node.get_logger().info(f"Generated path from {start_index} to {best_goal_index}!")
 
+    # In order to construct a path from the search process, start from the best node
+    # within the occupancy grid, and work backwards until you reach the start node. 
     backtrace: list[OccupancyGridIndex] = []
     current_backtrace_index = dataclasses.replace(best_goal_index)
-    while came_from[current_backtrace_index] != NULL_OCC_GRID_INDEX:
+    while came_from[current_backtrace_index] != null_occ_grid_index:
         backtrace.append(current_backtrace_index)
         current_backtrace_index = came_from[current_backtrace_index]
 
@@ -203,6 +248,10 @@ def generate_path(
     robot_pose: Pose,
     waypoint_robot_relative: Point,
 ) -> Path:
+    """
+    Generate path in occupancy grid indices coordinate system, convert it to robot
+    relative coodinates, and package it in a nav_msgs.msg.Path message.
+    """
     start_point = find_closest_drivable_point(occupancy_grid)
     assert start_point is not None, "Could not find drivable area in front of robot!"
 
@@ -232,3 +281,20 @@ def generate_path(
             )
         ]
     )
+
+if __name__ == "__main__":
+    @dataclass
+    class FakeInfo:
+        resolution = 0.05
+        height = 70
+        width = 30
+
+    @dataclass
+    class FakeGrid:
+        info: FakeInfo
+        data: list[int]
+
+    fakeGrid = FakeGrid(info=FakeInfo(), data=[])
+
+    if not is_index_out_of_bounds(fakeGrid, OccupancyGridIndex(0, 0)):
+        index_occupancy_grid(fakeGrid, OccupancyGridIndex(0, 0))

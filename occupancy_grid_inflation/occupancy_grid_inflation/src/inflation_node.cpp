@@ -1,12 +1,14 @@
 #include "rclcpp/rclcpp.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 
+static constexpr double ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW = -0.60; // meters
+
 class OccupancyGridInflation : public rclcpp::Node {
 public:
 
     OccupancyGridInflation() : Node("occupancy_grid_inflation") {
         sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-            "/occupancy_grid", 10, std::bind(&OccupancyGridInflation::mapCallback, this, std::placeholders::_1));
+            "/occ_grid", 10, std::bind(&OccupancyGridInflation::mapCallback, this, std::placeholders::_1));
         pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/inflated_occupancy_grid", 10);
 
         latest_grid_ = nullptr;
@@ -21,8 +23,9 @@ private:
 
         inflateObstacles(inflated_grid, 10, 20, 0.9); // 10
         inflated_grid.header.frame_id = "odom";
-        inflated_grid.info.origin.position.set__x(-12 * inflated_grid.info.resolution);
-        inflated_grid.info.origin.position.set__y(77 * inflated_grid.info.resolution);
+        inflated_grid.info.origin.position.set__x(-ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW);
+        inflated_grid.info.origin.position.set__y(inflated_grid.info.width / 2* inflated_grid.info.resolution);
+        // rotate to match +x forwards, +y left
         inflated_grid.info.origin.orientation.set__z(-0.7071068);
         inflated_grid.info.origin.orientation.set__w(0.7071068);
     
@@ -30,7 +33,14 @@ private:
 
         pub_->publish(inflated_grid);
     }    
-
+/** 
+ *  @brief Takes an occupancy grid from CV and makes the space around the obstacles less driveable.
+ *  @param grid The grid to be inflated
+ *  @param radius The radius of inflation
+ *  @param add_on Used to calculate the area check for inflation
+ *  @param decrease_factor: how quickly the inflation decreases as it moves away from an obstacle.
+ *  @returns Nothing
+ */
     void inflateObstacles(nav_msgs::msg::OccupancyGrid &grid, int radius, int add_on, double decrease_factor) {
         int width = grid.info.width;
         int height = grid.info.height;
