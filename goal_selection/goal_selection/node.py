@@ -46,8 +46,8 @@ PATH_PUBLISH_PERIOD_SECONDS = 2
 class GoalSelectionNode(Node):
     # The most recent odometry for the robot
     odometry: Odometry | None = None
-    # The closest waypoint to the robot in robot relative coordinates
-    waypoint_robot_relative: Point | None = None
+    # The closest waypoint to the robot with origin = robot start point
+    waypoint_meters: Point | None = None
     # The most recent occupancy grid, inflated by the inflation layer node
     inflated_occupancy_grid: OccupancyGrid | None = None
     # The publisher for generated paths
@@ -112,7 +112,7 @@ class GoalSelectionNode(Node):
         the logically next waypoint.
         """
         if self.odometry is None or self.current_waypoint_index >= len(self.waypoints):
-            self.waypoint_robot_relative = None
+            self.waypoint_meters = None
             return
         
         current_waypoint = self.waypoints[self.current_waypoint_index]
@@ -120,12 +120,15 @@ class GoalSelectionNode(Node):
         current_waypoint_long_meters, current_waypoint_lat_meters = lat_long_to_meters(current_waypoint.latitude, current_waypoint.longitude)
         new_long_meters, new_lat_meters = lat_long_to_meters(new_gps_data.latitude, new_gps_data.longitude)
 
-        self.waypoint_robot_relative = Point(
-            x=current_waypoint_lat_meters-new_lat_meters,
-            y=-(current_waypoint_long_meters-new_long_meters)
+        self.waypoint_meters = Point(
+            x=current_waypoint_lat_meters-new_lat_meters + self.odometry.pose.pose.position.x,
+            y=-(current_waypoint_long_meters-new_long_meters) + self.odometry.pose.pose.position.y
         )
 
-        dist_to_waypoint = math.hypot(self.waypoint_robot_relative.x, self.waypoint_robot_relative.y)
+        dist_to_waypoint = math.hypot(
+            self.waypoint_meters.x - self.odometry.pose.pose.position.x,
+            self.waypoint_meters.y - self.odometry.pose.pose.position.y
+        )
 
         self.get_logger().info(
             f"Current waypoint: {current_waypoint}\n" + 
@@ -137,7 +140,7 @@ class GoalSelectionNode(Node):
             self.current_waypoint_index += 1
             self.gps_callback(new_gps_data)
 
-        self.get_logger().info(f"Robot relative waypoint: {self.waypoint_robot_relative}")
+        self.get_logger().info(f"Waypoint meters: {self.waypoint_meters}")
 
     def inflated_occupancy_grid_callback(self, new_occupancy_grid: OccupancyGrid):
         """Store latest inflated occupancy grid."""
@@ -145,7 +148,7 @@ class GoalSelectionNode(Node):
 
     def generate_and_publish_path(self):
         """Generate and publish path for robot to follow."""
-        if self.inflated_occupancy_grid is None or self.odometry is None or self.waypoint_robot_relative is None:
+        if self.inflated_occupancy_grid is None or self.odometry is None or self.waypoint_meters is None:
             self.path_publisher.publish(
                 Path(
                     header=Header(
@@ -160,7 +163,7 @@ class GoalSelectionNode(Node):
             goal_selection_node=self,
             occupancy_grid=self.inflated_occupancy_grid,
             robot_pose=self.odometry.pose.pose,
-            waypoint_robot_relative=self.waypoint_robot_relative
+            waypoint_meters=self.waypoint_meters
         )
 
         self.path_publisher.publish(path)

@@ -53,7 +53,7 @@ def get_yaw_radians_from_quaternion(q: Quaternion):
     cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
     return math.atan2(siny_cosp, cosy_cosp)
 
-def convert_occupancy_grid_index_to_robot_relative_position(
+def convert_occupancy_grid_index_to_meters(
     occupancy_grid_resolution: float,
     occupancy_grid_coordinates: OccupancyGridIndex,
     robot_pose: Pose
@@ -122,21 +122,21 @@ def index_cost(
     occupancy_grid_resolution: float,
     index: OccupancyGridIndex,
     robot_pose: Pose,
-    waypoint_robot_relative: Point
+    waypoint_meters: Point
 ) -> float:
     """
     Calculate cost of a node on the occupancy grid as its Euclidean distance from
     the goal node.
     """
-    index_robot_relative_coords = convert_occupancy_grid_index_to_robot_relative_position(
+    index_meters = convert_occupancy_grid_index_to_meters(
         occupancy_grid_resolution,
         index,
         robot_pose
     )
 
     return math.sqrt(
-        (index_robot_relative_coords.x - waypoint_robot_relative.x) ** 2
-        + (index_robot_relative_coords.y - waypoint_robot_relative.y) ** 2
+        (index_meters.x - waypoint_meters.x) ** 2
+        + (index_meters.y - waypoint_meters.y) ** 2
     )
 
 def generate_path_occupancy_grid_indices(
@@ -144,7 +144,7 @@ def generate_path_occupancy_grid_indices(
     occupancy_grid: OccupancyGrid,
     start_index: OccupancyGridIndex,
     robot_pose: Pose,
-    waypoint_robot_relative: Point,
+    waypoint_meters: Point,
 ):
     """
     Generate a good path for the robot to follow towards the goal using the A* search
@@ -161,7 +161,7 @@ def generate_path_occupancy_grid_indices(
         occupancy_grid_resolution=occupancy_grid.info.resolution,
         index=start_index,
         robot_pose=robot_pose,
-        waypoint_robot_relative=waypoint_robot_relative
+        waypoint_meters=waypoint_meters
     )
     heapq.heappush(priority_queue, IndexAndCost(cost=start_heuristic, index=start_index))
 
@@ -187,7 +187,7 @@ def generate_path_occupancy_grid_indices(
             occupancy_grid_resolution=occupancy_grid.info.resolution,
             index=current_index,
             robot_pose=robot_pose,
-            waypoint_robot_relative=waypoint_robot_relative
+            waypoint_meters=waypoint_meters
         )
 
         if distance_to_waypoint < best_goal_distance:
@@ -225,7 +225,7 @@ def generate_path_occupancy_grid_indices(
                     occupancy_grid_resolution=occupancy_grid.info.resolution,
                     index=neighbor,
                     robot_pose=robot_pose,
-                    waypoint_robot_relative=waypoint_robot_relative
+                    waypoint_meters=waypoint_meters
                 )
                 priority = new_cost + heuristic
                 heapq.heappush(priority_queue, IndexAndCost(cost=priority, index=neighbor))
@@ -246,7 +246,7 @@ def generate_path(
     goal_selection_node: Node,
     occupancy_grid: OccupancyGrid,
     robot_pose: Pose,
-    waypoint_robot_relative: Point,
+    waypoint_meters: Point,
 ) -> Path:
     """
     Generate path in occupancy grid indices coordinate system, convert it to robot
@@ -265,7 +265,7 @@ def generate_path(
                     frame_id="odom"
                 ),
                 pose=Pose(
-                    position=convert_occupancy_grid_index_to_robot_relative_position(
+                    position=convert_occupancy_grid_index_to_meters(
                         occupancy_grid.info.resolution,
                         index,
                         robot_pose
@@ -277,7 +277,7 @@ def generate_path(
                 occupancy_grid=occupancy_grid,
                 start_index=start_point,
                 robot_pose=robot_pose,
-                waypoint_robot_relative=waypoint_robot_relative
+                waypoint_meters=waypoint_meters
             )
         ]
     )
