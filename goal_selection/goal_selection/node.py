@@ -56,6 +56,8 @@ class GoalSelectionNode(Node):
     waypoints: list[GPSWaypoint] = []
     # Index of waypoint that we are currently trying to travel to
     current_waypoint_index: int = 0
+    # GPS Coordinates for start of course
+    origin_waypoint: GPSWaypoint | None = None
 
     def __init__(self):
         """Initialize goal selection node."""
@@ -108,6 +110,9 @@ class GoalSelectionNode(Node):
     def odometry_callback(self, new_odometry: Odometry):
         """Store odometry data into member variable."""
         self.odometry = new_odometry
+        
+        if self.origin_waypoint is not None:
+            self.gps_callback(NavSatFix())
 
     def publish_waypoint_marker(self):
         waypoint_marker = Marker()
@@ -139,18 +144,21 @@ class GoalSelectionNode(Node):
         TODO: Currently always choses the first waypoint in the list, but should choose
         the logically next waypoint.
         """
+        if self.origin_waypoint is None:
+            self.origin_waypoint = GPSWaypoint(latitude=new_gps_data.latitude, longitude=new_gps_data.longitude)
+
         if self.odometry is None or self.current_waypoint_index >= len(self.waypoints):
             self.waypoint_meters = None
             return
         
         current_waypoint = self.waypoints[self.current_waypoint_index]
 
+        origin_gps_long_meters, origin_gps_lat_meters = lat_long_to_meters(self.origin_waypoint.latitude, self.origin_waypoint.longitude)
         current_waypoint_long_meters, current_waypoint_lat_meters = lat_long_to_meters(current_waypoint.latitude, current_waypoint.longitude)
-        new_long_meters, new_lat_meters = lat_long_to_meters(new_gps_data.latitude, new_gps_data.longitude)
 
         self.waypoint_meters = Point(
-            x=current_waypoint_lat_meters-new_lat_meters + self.odometry.pose.pose.position.x,
-            y=-(current_waypoint_long_meters-new_long_meters) + self.odometry.pose.pose.position.y
+            x=current_waypoint_lat_meters-origin_gps_lat_meters,
+            y=-(current_waypoint_long_meters-origin_gps_long_meters)
         )
 
         self.publish_waypoint_marker()
