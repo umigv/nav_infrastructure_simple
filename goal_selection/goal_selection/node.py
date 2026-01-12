@@ -20,11 +20,14 @@ def lat_long_to_meters(latitude: float, longitude: float) -> tuple[float, float]
     """
     Convert latitude and longitude from degrees to meters.
     
-    This conversion process depends on which "meters" coordinate system you use.
+    The meters zone should be updated based on the (extremely rough) location of the robot, as it
+    is only valid for a specific longitude range and hemisphere.
     
     TODO: It's correctness should be validated.
     """
-    transformer = Transformer.from_crs("EPSG:4326", "EPSG:32618", always_xy=True)
+    GPS_ZONE = "EPSG:4326"
+    FMCRB_METERS_ZONE = "EPSG:32617"
+    transformer = Transformer.from_crs(GPS_ZONE, FMCRB_METERS_ZONE, always_xy=True)
     return transformer.transform(longitude, latitude)
 
 
