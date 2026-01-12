@@ -4,15 +4,15 @@ from launch_ros.actions import Node
 # [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
 
 def generate_launch_description():
-    twist_data_topic = "/enc_vel"
-    imu_data_topic = "/imu/data"
-    gps_data_topic = "/gps_coords"
+    twist_data_topic = "/enc_vel" # TODO: tune encoder covariance if needed
+    imu_data_topic = "/imu/data" # TODO: tune imu covariance if needed
+    gps_data_topic = "/gps_coords" # TODO: tune gps covariance if needed
 
     odom_frame = "odom"
     map_frame = "map"
     base_frame = "base_link"
-    imu_frame = "imu_link"
-    gps_frame = "gps_link"
+    imu_frame = "imu_link" # TODO: CHECK
+    gps_frame = "gps_link" # TODO: CHECK
 
     tf_base_to_imu = Node(
         package="tf2_ros",
@@ -20,8 +20,8 @@ def generate_launch_description():
         name="tf_base_to_imu",
         output="screen",
         arguments=[
-            "--x", "0.0", "--y", "0.0", "--z", "0.0",
-            "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0",
+            "--x", "0.0", "--y", "0.0", "--z", "0.0", # TODO: TUNE
+            "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0", # TODO: TUNE
             "--frame-id", base_frame,
             "--child-frame-id", imu_frame,
         ],
@@ -62,7 +62,7 @@ def generate_launch_description():
                 False,  False,  False,
                 False, False, False,
                 True,  False,  False,
-                False, False, False, # we could publish yaw rate, but we ignore it and use IMU's yaw rate
+                False, False, False, # TODO: we could publish yaw rate, but we ignore it and use IMU's yaw rate
                 False, False, False
             ],
             "twist0_queue_size": 50,
