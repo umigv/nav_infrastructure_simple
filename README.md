@@ -42,7 +42,7 @@ The following describes how to run the point simulator (basic non-physics based 
     ```
 4. Publish current gps coords
     ```bash
-    ros2 topic pub /gps_coords sensor_msgs/msg/NavSatFix "{header: {frame_id: 'gps'}, status: {status: 0, service: 1}, latitude: 42.667918, longitude: -83.218317, altitude: 10.0, position_covariance: [0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0], position_covariance_type: 0}" --once
+    ros2 topic pub /gps_coords sensor_msgs/msg/NavSatFix "{header: {frame_id: 'gps'}, status: {status: 0, service: 1}, latitude: 42.294377, longitude: -83.708555, altitude: 10.0, position_covariance: [0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0], position_covariance_type: 0}" --once
     ```
 
 Feel free to modify the current gps coords. 
