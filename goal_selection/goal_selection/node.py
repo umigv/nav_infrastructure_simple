@@ -10,6 +10,7 @@ from nav_msgs.msg import Odometry, Path, OccupancyGrid
 import rclpy
 from sensor_msgs.msg import NavSatFix
 from std_msgs.msg import Header
+from visualization_msgs.msg import Marker
 from rclpy.node import Node, Publisher
 from pyproj import Transformer
 
@@ -31,7 +32,6 @@ def lat_long_to_meters(latitude: float, longitude: float) -> tuple[float, float]
     FMCRB_METERS_ZONE = "EPSG:32617"
     transformer = Transformer.from_crs(GPS_ZONE, FMCRB_METERS_ZONE, always_xy=True)
     return transformer.transform(longitude, latitude)
-
 
 @dataclass
 class GPSWaypoint:
@@ -88,6 +88,12 @@ class GoalSelectionNode(Node):
             10
         )
 
+        self.waypoint_marker_publisher = self.create_publisher(
+            Marker,
+            "/waypoint_marker",
+            10
+        )
+
         self.create_timer(PATH_PUBLISH_PERIOD_SECONDS, self.generate_and_publish_path)
 
         with open(WAYPOINTS_FILE_PATH, "r") as waypoints_file:
@@ -102,6 +108,28 @@ class GoalSelectionNode(Node):
     def odometry_callback(self, new_odometry: Odometry):
         """Store odometry data into member variable."""
         self.odometry = new_odometry
+
+    def publish_waypoint_marker(self):
+        waypoint_marker = Marker()
+
+        waypoint_marker.header.frame_id = 'odom'
+        waypoint_marker.header.stamp = self.get_clock().now().to_msg()
+        waypoint_marker.ns = 'goal_selection'
+        waypoint_marker.id = 0
+        waypoint_marker.type = Marker.SPHERE
+        waypoint_marker.action = Marker.ADD
+        waypoint_marker.pose.position.x = self.waypoint_meters.x
+        waypoint_marker.pose.position.y = self.waypoint_meters.y
+        waypoint_marker.pose.position.z = 0.0
+        waypoint_marker.scale.x = 0.4
+        waypoint_marker.scale.y = 0.4
+        waypoint_marker.scale.z = 0.4
+        waypoint_marker.color.a = 1.0
+        waypoint_marker.color.r = 0.0
+        waypoint_marker.color.g = 0.0
+        waypoint_marker.color.b = 1.0
+
+        self.waypoint_marker_publisher.publish(waypoint_marker)
 
     def gps_callback(self, new_gps_data: NavSatFix):
         """
@@ -124,6 +152,8 @@ class GoalSelectionNode(Node):
             x=current_waypoint_lat_meters-new_lat_meters + self.odometry.pose.pose.position.x,
             y=-(current_waypoint_long_meters-new_long_meters) + self.odometry.pose.pose.position.y
         )
+
+        self.publish_waypoint_marker()
 
         dist_to_waypoint = math.hypot(
             self.waypoint_meters.x - self.odometry.pose.pose.position.x,
