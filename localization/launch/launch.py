@@ -163,7 +163,7 @@ def generate_launch_description():
         parameters=[{
             "gps_data_topic": gps_data_topic,
             "min_samples_required": 10,
-            "set_origin_service": "/navsat_transform/set_datum",
+            "set_origin_service": "/datum",
         }],
     )
 
