@@ -2,7 +2,6 @@ from dataclasses import dataclass
 import json
 import math
 import pathlib
-import random
 import sys
 from typing import Any
 from geometry_msgs.msg import Point
@@ -34,18 +33,6 @@ def lat_long_degrees_to_meters(latitude: float, longitude: float) -> tuple[float
     transformer = Transformer.from_crs(GPS_ZONE, FMCRB_METERS_ZONE, always_xy=True)
     return transformer.transform(longitude, latitude)[::-1]
 
-def lat_long_meters_to_degrees(x: float, y: float) -> tuple[float, float]:
-    """
-    Convert latitude and longitude from degrees to meters.
-    
-    The meters zone should be updated based on the (extremely rough) location of the robot, as it
-    is only valid for a specific longitude range and hemisphere.
-    
-    TODO: It's correctness should be validated.
-    """
-    transformer = Transformer.from_crs(FMCRB_METERS_ZONE, GPS_ZONE, always_xy=True)
-    return transformer.transform(y, x)[::-1]
-
 @dataclass
 class GPSWaypoint:
     latitude: float
@@ -71,8 +58,6 @@ class GoalSelectionNode(Node):
     current_waypoint_index: int = 0
     # GPS Coordinates for start of course
     origin_waypoint: GPSWaypoint | None = None
-    # The last time odometry was updates in seconds. Used for GPS Simulation.
-    last_odom_update_time_seconds: float | None = None
 
     def __init__(self):
         """Initialize goal selection node."""
@@ -119,8 +104,6 @@ class GoalSelectionNode(Node):
 
         self.create_timer(PATH_PUBLISH_PERIOD_SECONDS, self.generate_and_publish_path)
 
-        self.declare_parameter('simulate_gps', False)
-
         with open(WAYPOINTS_FILE_PATH, "r") as waypoints_file:
             for waypoint_json_object in json.load(waypoints_file)["waypoints"]:
                 self.waypoints.append(
@@ -133,25 +116,6 @@ class GoalSelectionNode(Node):
     def odometry_callback(self, new_odometry: Odometry):
         """Store odometry data into member variable."""
         self.odometry = new_odometry
-        
-        if self.origin_waypoint is not None and self.get_parameter('simulate_gps').get_parameter_value().bool_value:
-            current_time = self.get_clock().now().seconds_nanoseconds()[0]
-            if self.last_odom_update_time_seconds is None or current_time - self.last_odom_update_time_seconds >= 1:
-                self.last_odom_update_time_seconds = current_time
-                error_magnitude = random.uniform(0, 1)
-                error_angle_radians = random.uniform(0, math.pi * 2)
-
-                origin_gps_lat_meters, origin_gps_long_meters = lat_long_degrees_to_meters(self.origin_waypoint.latitude, self.origin_waypoint.longitude)
-                lat, long = lat_long_meters_to_degrees(
-                    origin_gps_lat_meters + self.odometry.pose.pose.position.x + error_magnitude * math.cos(error_angle_radians), 
-                    origin_gps_long_meters - self.odometry.pose.pose.position.y + error_magnitude * math.sin(error_angle_radians)
-                )
-                self.gps_callback(
-                    NavSatFix(
-                        latitude=lat,
-                        longitude=long
-                    )
-                )
 
     def publish_waypoint_marker(self):
         waypoint_marker = Marker()
