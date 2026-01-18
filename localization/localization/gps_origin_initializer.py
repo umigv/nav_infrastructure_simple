@@ -46,6 +46,8 @@ class GpsOriginInitializer(Node):
         request.geo_pose.position.latitude = latitude
         request.geo_pose.position.longitude = longitude
         request.geo_pose.position.altitude = altitude
+        # The GPS doesn't supply rotation information. Since this is used to initialize the GPS origin and we 
+        # make (0, 0) the starting point of the robot, the rotation at the geo pose is 0.
         request.geo_pose.orientation.w = 1.0
 
         self.sent = True
