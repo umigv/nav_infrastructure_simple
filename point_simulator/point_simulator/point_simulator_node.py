@@ -22,23 +22,23 @@ class PointSimulator(Node):
         self.theta = 0.0
         self.vx = 0.0
         self.vtheta = 0.0
-        self.last_time = time.time()
-        self.last_cmd_time = time.time()
+        self.last_time_nanoseconds = time.time() * 1e9
+        self.last_cmd_time_nanoseconds = time.time() * 1e9
 
     def cmd_vel_callback(self, msg):
         """Sets the robot velocity and updates when robot last recieved command. Called from the joystick subcription."""
         self.vx = msg.linear.x
         self.vtheta = msg.angular.z
-        self.last_cmd_time = self.get_clock().now().nanoseconds 
+        self.last_cmd_time_nanoseconds = self.get_clock().now().nanoseconds 
 
     def update_position(self):
         """Sets the robot's current position based on velocity; publishes odometry and position data."""
         current_time = self.get_clock().now().nanoseconds
-        dt = (current_time - self.last_time) / 1e9  # Convert nanoseconds to seconds
-        self.last_time = current_time
+        dt = (current_time - self.last_time_nanoseconds) / 1e9  # Convert nanoseconds to seconds
+        self.last_time_nanoseconds = current_time
 
         # Check if no cmd_vel was received recently (e.g., within 0.5 sec)
-        if current_time - self.last_cmd_time > 5e8:  # 0.5 seconds in nanoseconds
+        if current_time - self.last_cmd_time_nanoseconds > 5e8:  # 0.5 seconds in nanoseconds
             self.vx = 0.0
             self.vtheta = 0.0  # Stop rotation to prevent drift
 
