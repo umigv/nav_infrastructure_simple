@@ -48,3 +48,15 @@ The following describes how to run the point simulator (basic non-physics based 
 Feel free to modify the current gps coords. 
 
 Keep in mind that full occupancy grid simulation is likely infeasible, since the occupancy grid needs to "turn" with the robot.
+
+
+### Ramp Mode Planning/ideas
+- Will depend on CV Output to trigger mode
+- Should reduce speed over ramp?
+- Max ramp grade is 15 degrees
+- In general, I think a good strategy is to have the robot drive square to the ramp so it doesn't tip too much or drive off.
+    - Increase the lookahead distance on Pure Pursuit? (selecting a further lookahead point will return a straighter path)
+    - Create a state machine that detects when the robot's base is at a >12.5 degree angle with the ground, then orient the robot to align with that angle. Could probably do some math with pitch and roll to calculate this
+    - Turn off path planning and pure pursuit once we get a signal from CV until the robot's pitch is within a certain threshhold of 0 for more than the time it is at the top. During that time, use some kind of motion controller to minimize the robot's roll by adjusting the yaw of its path, because if the robot is driving straight onto the ramp, only its pitch should change. May be more an embedded-oriented idea, idk.
+
+    
