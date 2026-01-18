@@ -25,12 +25,12 @@ The following describes how to run the point simulator (basic non-physics based 
       frame_id: 'odom'
     info:
       resolution: 0.05
-      width: 155
-      height: 76
+      width: 100
+      height: 100
       origin:
         position: {x: 0.0, y: 0.0, z: 0.0}
         orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
-    data: [$(python3 -c 'print(", ".join(["0"]*155*76))')]"
+    data: [$(python3 -c 'print(", ".join(["0"]*100*100))')]"
     ```
 2. Run navigation stack
     ```bash
@@ -42,7 +42,7 @@ The following describes how to run the point simulator (basic non-physics based 
     ```
 4. Publish current gps coords
     ```bash
-    ros2 topic pub /gps_coords sensor_msgs/msg/NavSatFix "{header: {frame_id: 'gps'}, status: {status: 0, service: 1}, latitude: 42.667918, longitude: -83.218317, altitude: 10.0, position_covariance: [0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0], position_covariance_type: 0}" --once
+    ros2 topic pub /gps_coords sensor_msgs/msg/NavSatFix "{header: {frame_id: 'gps'}, status: {status: 0, service: 1}, latitude: 42.294377, longitude: -83.708555, altitude: 10.0, position_covariance: [0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0], position_covariance_type: 0}" --once
     ```
 
 Feel free to modify the current gps coords. 

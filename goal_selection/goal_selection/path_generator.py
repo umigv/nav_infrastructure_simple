@@ -17,6 +17,7 @@ class OccupancyGridIndex:
     """Store the coordinates to a spot in the occupancy grid."""
     y: int # +y = left
     x: int # +x = forward
+    # (y=0, x=0) is the robot position (i.e. robot is origin)
 
 @dataclass(order=True)
 class IndexAndCost:
@@ -34,7 +35,7 @@ ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW = -0.60
 NULL_OCC_GRID_INDEX = OccupancyGridIndex(y=-1, x=-1)
 # The robot's position within the occupancy grid is constant, since the camera
 # is fixed to the robot.
-ROBOT_POSITION_IN_OCC_GRID = OccupancyGridIndex(y=77, x=12)
+ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW = -0.60
 # What value on the occupancy grid represents drivable area
 DRIVABLE_CELL_VALUE = 0
 
@@ -43,7 +44,20 @@ DRIVABLE_CELL_VALUE = 0
 
 def index_occupancy_grid(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex):
     """Index occupancy grid 1D data array using 2D coordinates."""
-    return occupancy_grid.data[(index.x + ROBOT_POSITION_IN_OCC_GRID.x) * occupancy_grid.info.width + -index.y + ROBOT_POSITION_IN_OCC_GRID.y]
+    x_component = index.x + int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution)
+    y_component = -index.y + occupancy_grid.info.width//2
+    return occupancy_grid.data[x_component * occupancy_grid.info.width + y_component]
+
+def is_index_out_of_bounds(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex) -> bool:
+    """Calculate whether or not index is out of bounds"""
+    # Convert to bottom of left of occupancy origin
+    adjusted_y = -index.y + occupancy_grid.info.width//2
+    adjusted_x = index.x + int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution)
+
+    return adjusted_y < 0 \
+            or adjusted_y >= occupancy_grid.info.width \
+            or adjusted_x < 0 \
+            or adjusted_x >= occupancy_grid.info.height
 
 
 def get_yaw_radians_from_quaternion(q: Quaternion):
@@ -52,7 +66,7 @@ def get_yaw_radians_from_quaternion(q: Quaternion):
     cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
     return math.atan2(siny_cosp, cosy_cosp)
 
-def convert_occupancy_grid_index_to_robot_relative_position(
+def convert_occupancy_grid_index_to_meters(
     occupancy_grid_resolution: float,
     occupancy_grid_coordinates: OccupancyGridIndex,
     robot_pose: Pose
@@ -104,9 +118,8 @@ def find_closest_drivable_point(occupancy_grid: OccupancyGrid) -> OccupancyGridI
             )
 
             #somewhere in this block of ifs is causing the indexing issue. Should be the third if. Also could be an addition v. subtraction error on the first
-
-            if -potential_position.y + ROBOT_POSITION_IN_OCC_GRID.y < 0 or -potential_position.y + ROBOT_POSITION_IN_OCC_GRID.y >= occupancy_grid.info.width\
-                or potential_position.x + ROBOT_POSITION_IN_OCC_GRID.x < 0 or potential_position.x + ROBOT_POSITION_IN_OCC_GRID.x >= occupancy_grid.info.height:
+ 
+            if is_index_out_of_bounds(occupancy_grid, potential_position):
                 continue
 
             if potential_position in visited:
@@ -124,13 +137,13 @@ def index_cost(
     occupancy_grid_resolution: float,
     index: OccupancyGridIndex,
     robot_pose: Pose,
-    waypoint_robot_relative: Point
+    waypoint_meters: Point
 ) -> float:
     """
     Calculate cost of a node on the occupancy grid as its Euclidean distance from
     the goal node.
     """
-    index_robot_relative_coords = convert_occupancy_grid_index_to_robot_relative_position(
+    index_meters = convert_occupancy_grid_index_to_meters(
         occupancy_grid_resolution,
         index,
         robot_pose
@@ -139,8 +152,8 @@ def index_cost(
 
 
     return math.sqrt(
-        (index_robot_relative_coords.x - waypoint_robot_relative.x) ** 2
-        + (index_robot_relative_coords.y - waypoint_robot_relative.y) ** 2
+        (index_meters.x - waypoint_meters.x) ** 2
+        + (index_meters.y - waypoint_meters.y) ** 2
     )
 #once we get to testing: because we're adding, may need to make sure the values don't exceed 100. Will probably need to be toned down a lot to align with the rest of priority.
 def generate_zone_weighting(
@@ -191,7 +204,7 @@ def generate_path_occupancy_grid_indices(
     occupancy_grid: OccupancyGrid,
     start_index: OccupancyGridIndex,
     robot_pose: Pose,
-    waypoint_robot_relative: Point,
+    waypoint_meters: Point,
     zone_weighting: ndarray
 ):
     came_from: dict[OccupancyGridIndex, OccupancyGridIndex] = {}
@@ -205,10 +218,16 @@ def generate_path_occupancy_grid_indices(
         occupancy_grid_resolution=occupancy_grid.info.resolution,
         index=start_index,
         robot_pose=robot_pose,
-        waypoint_robot_relative=waypoint_robot_relative
+        waypoint_meters=waypoint_meters
     )
     heapq.heappush(priority_queue, IndexAndCost(cost=start_heuristic, index=start_index))
-    came_from[start_index] = NULL_OCC_GRID_INDEX
+
+    # Used as an placeholder for algorithms that use occupancy grid indices since it 
+    # is not a possible value to reach.
+
+    null_occ_grid_index = OccupancyGridIndex(y=0, x=int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution) - 1)
+
+    came_from[start_index] = null_occ_grid_index
 
     best_goal_index = start_index
     best_goal_distance = start_heuristic
@@ -227,7 +246,7 @@ def generate_path_occupancy_grid_indices(
             occupancy_grid_resolution=occupancy_grid.info.resolution,
             index=current_index,
             robot_pose=robot_pose,
-            waypoint_robot_relative=waypoint_robot_relative
+            waypoint_meters=waypoint_meters
         )
 
         if distance_to_waypoint < best_goal_distance:
@@ -243,8 +262,7 @@ def generate_path_occupancy_grid_indices(
                 x=current_index.x + dx
             )
 
-            if neighbor.y < 0 or neighbor.y >= occupancy_grid.info.width\
-                or neighbor.x < 0 or neighbor.x >= occupancy_grid.info.height:
+            if is_index_out_of_bounds(occupancy_grid, neighbor):
                 continue
 
             if index_occupancy_grid(occupancy_grid, neighbor) != DRIVABLE_CELL_VALUE:
@@ -264,10 +282,14 @@ def generate_path_occupancy_grid_indices(
                     occupancy_grid_resolution=occupancy_grid.info.resolution,
                     index=neighbor,
                     robot_pose=robot_pose,
-                    waypoint_robot_relative=waypoint_robot_relative
+                    waypoint_meters=waypoint_meters
                 )
                 #add the zone weight here
-                priority = new_cost + heuristic + zone_weighting[neighbor.x, neighbor.y]
+
+                #ERROR: now that we have the updated code, this is what is causing the error. We need to update the accessing of zone weighting to match the new scheme.
+                #-index.y + occupancy_grid.info.width//2
+                #index.x + int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution)
+                priority = new_cost + heuristic + zone_weighting[neighbor.x + int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution), -neighbor.y + occupancy_grid.info.width//2]
 
                 print(priority)
                 
@@ -277,7 +299,7 @@ def generate_path_occupancy_grid_indices(
 
     backtrace: list[OccupancyGridIndex] = []
     current_backtrace_index = dataclasses.replace(best_goal_index)
-    while came_from[current_backtrace_index] != NULL_OCC_GRID_INDEX:
+    while came_from[current_backtrace_index] != null_occ_grid_index:
         backtrace.append(current_backtrace_index)
         current_backtrace_index = came_from[current_backtrace_index]
 
@@ -288,7 +310,7 @@ def generate_path(
     goal_selection_node: Node,
     occupancy_grid: OccupancyGrid,
     robot_pose: Pose,
-    waypoint_robot_relative: Point,
+    waypoint_meters: Point,
 ) -> Path:
     """
     Generate path in occupancy grid indices coordinate system, convert it to robot
@@ -311,7 +333,7 @@ def generate_path(
                     frame_id="odom"
                 ),
                 pose=Pose(
-                    position=convert_occupancy_grid_index_to_robot_relative_position(
+                    position=convert_occupancy_grid_index_to_meters(
                         occupancy_grid.info.resolution,
                         index,
                         robot_pose
@@ -323,7 +345,7 @@ def generate_path(
                 occupancy_grid=occupancy_grid,
                 start_index=start_point,
                 robot_pose=robot_pose,
-                waypoint_robot_relative=waypoint_robot_relative,
+                waypoint_meters=waypoint_meters,
                 zone_weighting=zone_weights
             )
         ]

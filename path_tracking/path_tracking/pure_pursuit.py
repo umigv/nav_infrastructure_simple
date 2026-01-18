@@ -73,11 +73,6 @@ class PurePursuitNode(Node):
         self.smoothed_path_points = self.smooth_path_spline(path_msg)
         self.reached_goal = False
         self.visited = 0
-
-        while not self.reached_goal and rclpy.ok():
-            time.sleep(0.05)
-
-        self.smoothed_path_points = []
     
   
     def smooth_path_spline(self, path: Path, smoothing=0.1):
@@ -126,6 +121,7 @@ class PurePursuitNode(Node):
         if goal_dist < r:
             self.get_logger().info('REACHED GOAL')
             self.reached_goal = True
+            self.smoothed_path_points = []
             return None
 
 
