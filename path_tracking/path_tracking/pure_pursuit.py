@@ -73,12 +73,6 @@ class PurePursuitNode(Node):
         self.reached_goal = False
         self.visited = 0
 
-        while not self.reached_goal and rclpy.ok():
-            time.sleep(0.05)
-
-        # Clear the smoothed path when the goal is reached
-        self.smoothed_path_points = []
-
     def smooth_path_spline(self, path: Path, smoothing: float = 0.1) -> list[(float, float)]:
         # Fit a B-spline to the waypoints in the path
 
@@ -128,6 +122,7 @@ class PurePursuitNode(Node):
         if goal_dist < r:
             self.get_logger().info('REACHED GOAL')
             self.reached_goal = True
+            self.smoothed_path_points = []
             return None
 
         # Try to find interpolated segment intersection
