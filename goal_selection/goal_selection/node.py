@@ -136,7 +136,7 @@ class GoalSelectionNode(Node):
             current_time = self.get_clock().now().seconds_nanoseconds()[0]
             if self.last_odom_update_time_seconds is None or current_time - self.last_odom_update_time_seconds >= 1:
                 self.last_odom_update_time_seconds = current_time
-                error_magnitude = random.uniform(-1, 1)
+                error_magnitude = random.uniform(0, 1)
                 error_angle_radians = random.uniform(0, math.pi * 2)
 
                 origin_gps_lat_meters, origin_gps_long_meters = lat_long_degrees_to_meters(self.origin_waypoint.latitude, self.origin_waypoint.longitude)
