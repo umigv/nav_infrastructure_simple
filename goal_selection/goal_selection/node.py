@@ -119,6 +119,8 @@ class GoalSelectionNode(Node):
 
         self.create_timer(PATH_PUBLISH_PERIOD_SECONDS, self.generate_and_publish_path)
 
+        self.declare_parameter('simulate_gps', False)
+
         with open(WAYPOINTS_FILE_PATH, "r") as waypoints_file:
             for waypoint_json_object in json.load(waypoints_file)["waypoints"]:
                 self.waypoints.append(
@@ -132,7 +134,7 @@ class GoalSelectionNode(Node):
         """Store odometry data into member variable."""
         self.odometry = new_odometry
         
-        if self.origin_waypoint is not None:
+        if self.origin_waypoint is not None and self.get_parameter('simulate_gps').get_parameter_value().bool_value:
             current_time = self.get_clock().now().seconds_nanoseconds()[0]
             if self.last_odom_update_time_seconds is None or current_time - self.last_odom_update_time_seconds >= 1:
                 self.last_odom_update_time_seconds = current_time
