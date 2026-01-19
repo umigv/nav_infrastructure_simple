@@ -4,33 +4,10 @@ from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix, NavSatStatus
 from builtin_interfaces.msg import Time
 from serial import Serial # pip install pyserial to get this package, not pip install serial
-from pyubx2 import UBXReader, UBXMessage, UBX_PROTOCOL
+from pyubx2 import UBXReader, UBX_PROTOCOL
 
 UBX_FIX_TYPE_NO_FIX = 0
 UBX_FIX_TYPE_TIME_ONLY = 5
-UBX_FLAG_GNSSFIXOK = 0x01
-
-def timeMsgFromUBX(data) -> Time:
-    seconds = datetime(
-                year=data.year,
-                month=data.month,
-                day=data.day,
-                hour=data.hour,
-                minute=data.min,
-                second=data.second,
-                tzinfo=timezone.utc
-            ).timestamp()
-    
-    if data.nano < 0:
-        return Time(
-            sec=int(seconds) - 1,
-            nanosec=int(1e9 + data.nano)
-        )
-
-    return Time(
-        sec=int(seconds),
-        nanosec=int(data.nano)
-    )
 
 class GPSCoordPublisher(Node):
     def __init__(self):
@@ -38,7 +15,7 @@ class GPSCoordPublisher(Node):
 
         self.publisher = self.create_publisher(NavSatFix, 'gps/raw', 10)
 
-        self.stream = Serial('/dev/ttyACM0', 460800, timeout=3)
+        self.stream = Serial('/dev/ttyACM0', 460800, timeout=0.1)
         self.ubx_reader = UBXReader(self.stream, protfilter=UBX_PROTOCOL)
 
         self.create_timer(0.01, self.poll)
@@ -48,31 +25,33 @@ class GPSCoordPublisher(Node):
         try:
             _, msg = self.ubx_reader.read()
         except Exception as e:
-            self.get_logger().error(f"Error reading GPS data: {e}")
+            self.get_logger().error(f"Error reading GPS msg: {e}")
             return
 
         if msg is None:
             return
 
-        if msg.identity != "NAV-PVT":
+        if msg.identity not in ("NAV-PVT", "NAV2-PVT"):
             return
 
         if msg.fixType in (UBX_FIX_TYPE_NO_FIX, UBX_FIX_TYPE_TIME_ONLY):
+            self.get_logger().debug(f"Dropping GPS msg with no fix: {msg}")
             return
 
         if not msg.gnssFixOk:
-            self.get_logger().info("Received GPS data but fix not ok.")
+            self.get_logger().debug(f"Dropping GPS msg with fix not ok: {msg}")
             return
         
         if msg.invalidLlh:
+            self.get_logger().debug(f"Dropping GPS msg with invalid LLH: {msg}")
             return
 
-        self.get_logger().debug(f"GPS Msg: {msg}")
+        self.get_logger().debug(f"Publishing GPS Msg: {msg}")
         self.publish_from_pvt(msg)
 
     def publish_from_pvt(self, data):
         fix = NavSatFix()
-        fix.header.stamp = timeMsgFromUBX(data)
+        fix.header.stamp = self.resolve_timestamp(data)
         fix.header.frame_id = self.frame_id
 
         fix.status.status = NavSatStatus.STATUS_GBAS_FIX if data.diffSoln else NavSatStatus.STATUS_FIX
@@ -92,6 +71,25 @@ class GPSCoordPublisher(Node):
         ]
 
         self.publisher.publish(fix)
+
+    def resolve_timestamp(self, data) -> Time:
+        if not (data.validDate and data.validTime and data.fullyResolved):
+            return self.get_clock().now().to_msg()
+
+        seconds = datetime(
+            year=data.year,
+            month=data.month,
+            day=data.day,
+            hour=data.hour,
+            minute=data.min,
+            second=data.second,
+            tzinfo=timezone.utc
+        ).timestamp()
+        
+        if data.nano < 0:
+            return Time(sec=int(seconds) - 1, nanosec=int(data.nano) + 1_000_000_000)
+
+        return Time(sec=int(seconds), nanosec=int(data.nano))
 
 def main(args=None):
     rclpy.init(args=args)
