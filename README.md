@@ -9,6 +9,12 @@ When building, make sure you include `--symlink-install`. Otherwise, when contro
 colcon build --symlink-install
 ```
 
+### Dependencies
+This repo only has one dependecy: `pyproj`. You can install it with
+```bash
+pip install pyproj
+```
+
 ### Simulation
 You can run simulation by:
 1. Publishing occupancy grid
