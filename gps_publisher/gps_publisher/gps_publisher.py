@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix, NavSatStatus
@@ -17,7 +17,8 @@ def timeMsgFromUBX(data) -> Time:
                 day=data.day,
                 hour=data.hour,
                 minute=data.min,
-                second=data.second
+                second=data.second,
+                tzinfo=timezone.utc
             ).timestamp()
     
     if data.nano < 0:
