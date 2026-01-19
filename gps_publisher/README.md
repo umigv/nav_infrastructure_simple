@@ -22,7 +22,7 @@ Covariance is filled using u-blox accuracy fields:
 > - `1` → 10 Hz
 > - `10` → 1 Hz
 
-The GPS must be configured with the following on u-center:
+The GPS must be configured with the following on [u-center](https://www.u-blox.com/en/product/u-center):
 - UBX-CFG-PRT
    - Target: 3 - USB
    - Protocol in: 0 - UBX
