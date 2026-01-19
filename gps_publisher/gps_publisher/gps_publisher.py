@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix, NavSatStatus
 from builtin_interfaces.msg import Time
-from serial import Serial # pip install pyserial to get this package, not pip install serial
+from serial import Serial
 from pyubx2 import UBXReader, UBX_PROTOCOL
 
 UBX_FIX_TYPE_NO_FIX = 0
