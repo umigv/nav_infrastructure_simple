@@ -30,24 +30,28 @@ class GPSCoordPublisher(Node):
         if msg is None:
             return
 
-        if msg.identity not in ("NAV-PVT", "NAV2-PVT"):
+        if msg.identity != "NAV-PVT":
             return
 
-        if msg.fixType == UBX_FIX_TYPE_NO_FIX or msg.fixType == UBX_FIX_TYPE_TIME_ONLY:
+        if msg.fixType in (UBX_FIX_TYPE_NO_FIX, UBX_FIX_TYPE_TIME_ONLY):
             return
 
-        if (msg.flags & UBX_FLAG_GNSSFIXOK) == 0:
+        if not msg.gnssFixOk:
+            self.get_logger().info("Received GPS data but fix not ok.")
+            return
+        
+        if msg.invalidLlh:
             return
 
         self.get_logger().debug(f"GPS Msg: {msg}")
         self.publish_from_pvt(msg)
 
-    def publish_from_pvt(self, data: UBXMessage):
+    def publish_from_pvt(self, data):
         fix = NavSatFix()
         fix.header.stamp = self.get_clock().now().to_msg()
         fix.header.frame_id = self.frame_id
 
-        fix.status.status = NavSatStatus.STATUS_FIX
+        fix.status.status = NavSatStatus.STATUS_FIX if data.diffSoln else NavSatStatus.STATUS_NO_FIX
         fix.status.service = NavSatStatus.SERVICE_GPS
 
         fix.latitude = data.lat
