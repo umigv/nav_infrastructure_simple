@@ -50,8 +50,8 @@ class GPSCoordPublisher(Node):
         fix.status.status = NavSatStatus.STATUS_FIX
         fix.status.service = NavSatStatus.SERVICE_GPS
 
-        fix.latitude = data.lat * 1e-7
-        fix.longitude = data.lon * 1e-7
+        fix.latitude = data.lat
+        fix.longitude = data.lon
         fix.altitude = data.hMSL * 1e-3
         
         fix.position_covariance_type = NavSatFix.COVARIANCE_TYPE_DIAGONAL_KNOWN
