@@ -1,12 +1,35 @@
+from datetime import datetime
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix, NavSatStatus
+from builtin_interfaces.msg import Time
 from serial import Serial # pip install pyserial to get this package, not pip install serial
 from pyubx2 import UBXReader, UBXMessage, UBX_PROTOCOL
 
 UBX_FIX_TYPE_NO_FIX = 0
 UBX_FIX_TYPE_TIME_ONLY = 5
 UBX_FLAG_GNSSFIXOK = 0x01
+
+def timeMsgFromUBX(data) -> Time:
+    seconds = datetime(
+                year=data.year,
+                month=data.month,
+                day=data.day,
+                hour=data.hour,
+                minute=data.min,
+                second=data.second
+            ).timestamp()
+    
+    if data.nano < 0:
+        return Time(
+            sec=int(seconds) - 1,
+            nanosec=int(1e9 + data.nano)
+        )
+
+    return Time(
+        sec=int(seconds),
+        nanosec=int(data.nano)
+    )
 
 class GPSCoordPublisher(Node):
     def __init__(self):
@@ -48,10 +71,10 @@ class GPSCoordPublisher(Node):
 
     def publish_from_pvt(self, data):
         fix = NavSatFix()
-        fix.header.stamp = self.get_clock().now().to_msg()
+        fix.header.stamp = timeMsgFromUBX(data)
         fix.header.frame_id = self.frame_id
 
-        fix.status.status = NavSatStatus.STATUS_FIX if data.diffSoln else NavSatStatus.STATUS_NO_FIX
+        fix.status.status = NavSatStatus.STATUS_GBAS_FIX if data.diffSoln else NavSatStatus.STATUS_FIX
         fix.status.service = NavSatStatus.SERVICE_GPS
 
         fix.latitude = data.lat
