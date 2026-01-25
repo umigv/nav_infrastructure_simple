@@ -18,7 +18,7 @@ There are three mutually exclusive states:
 `/state` (`std_msgs/String`) - The current robot state as one of `"normal"`,  `"ramp"`, or `"recovery"`
 
 ## Services
-`/state/set_ramp` (`std_srvs/SetBool`) - Enable or disable ramp mode.
+`/state/set_ramp` (`std_srvs/SetBool`) - Enable or disable ramp mode.  
 `/state/set_recovery` (`std_srvs/SetBool`) - Enable or disable recovery mode.
 
 ## Example Usage
