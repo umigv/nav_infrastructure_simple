@@ -59,9 +59,7 @@ class StateMachine(Node):
         self.get_logger().info(f"Changed state from {last_state_str} to {state.value}, reason={reason}")
         
         self.last_state = state
-        msg = String()
-        msg.data = state.value
-        self.publisher.publish(msg)
+        self.publisher.publish(String(data=state.value))
 
     def set_recovery_callback(self, req: SetBool.Request, res: SetBool.Response) -> SetBool.Response:
         if req.data == self.recovery_enabled:
