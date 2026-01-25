@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Optional
 
 import rclpy
 from rclpy.node import Node
@@ -14,12 +15,12 @@ from rclpy.qos import (
 from std_msgs.msg import String
 from std_srvs.srv import SetBool
 
-class RobotMode(str, Enum):
+class State(str, Enum):
     NORMAL = "normal"
     RAMP = "ramp"
     RECOVERY = "recovery"
 
-class RobotModePublisher(Node):
+class StateMachine(Node):
     def __init__(self) -> None:
         super().__init__("state_machine")
 
@@ -29,7 +30,8 @@ class RobotModePublisher(Node):
             reliability=QoSReliabilityPolicy.RELIABLE,
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
         ))
-        self.timer = self.create_timer(10, self.publish_state)
+
+        self.last_state: Optional[State] = None
 
         self.set_ramp_service = self.create_service(SetBool, "/state/set_ramp", self.set_ramp_callback)
         self.ramp_enabled = False
@@ -37,21 +39,31 @@ class RobotModePublisher(Node):
         self.set_recovery_service = self.create_service(SetBool, "/state/set_recovery", self.set_recovery_callback)
         self.recovery_enabled = False
 
-    def compute_state(self) -> RobotMode:
-        if self._recovery_enabled:
-            return RobotMode.RECOVERY
-        
-        if self._ramp_enabled:
-            return RobotMode.RAMP
-        
-        return RobotMode.NORMAL
+        self.publish_state_if_changed(reason="init")
 
-    def publish_state(self) -> None:
+    def compute_state(self) -> State:
+        if self.recovery_enabled:
+            return State.RECOVERY
+        
+        if self.ramp_enabled:
+            return State.RAMP
+        
+        return State.NORMAL
+
+    def publish_state_if_changed(self, reason: str):
+        state = self.compute_state()
+        if state == self.last_state:
+            return
+        
+        last_state_str = self.last_state.value if self.last_state is not None else "<none>"
+        self.get_logger().info(f"Changed state from {last_state_str} to {state.value}, reason={reason}")
+        
+        self.last_state = state
         msg = String()
-        msg.data = self.compute_state().value
+        msg.data = state.value
         self.publisher.publish(msg)
 
-    def set_recovery_service(self, req: SetBool.Request, res: SetBool.Response) -> SetBool.Response:
+    def set_recovery_callback(self, req: SetBool.Request, res: SetBool.Response) -> SetBool.Response:
         if req.data == self.recovery_enabled:
             res.message = f"Recovery already {'enabled' if req.data else 'disabled'}."
         else:
@@ -60,9 +72,10 @@ class RobotModePublisher(Node):
         self.recovery_enabled = req.data
         res.success = True
         self.get_logger().info(res.message + f" (ramp_enabled={self.ramp_enabled})")
+        self.publish_state_if_changed(reason="/state/set_recovery")
         return res
 
-    def set_ramp_service(self, req: SetBool.Request, res: SetBool.Response) -> SetBool.Response:
+    def set_ramp_callback(self, req: SetBool.Request, res: SetBool.Response) -> SetBool.Response:
         if req.data == self.ramp_enabled:
             res.message = f"Ramp already {'enabled' if req.data else 'disabled'}."
         else:
@@ -71,14 +84,17 @@ class RobotModePublisher(Node):
         self.ramp_enabled = req.data
         res.success = True
         self.get_logger().info(res.message + f" (recovery_enabled={self.recovery_enabled})")
+        self.publish_state_if_changed(reason="/state/set_ramp")
         return res
 
 def main() -> None:
     rclpy.init()
-    node = RobotModePublisher()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    node = StateMachine()
+    try:
+        rclpy.spin(node)
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == "__main__":
     main()
