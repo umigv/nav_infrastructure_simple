@@ -2,6 +2,14 @@
 
 This package reads GNSS data in UBX protocol from our **u-blox ZED-F9P** GPS over USB and publishes `sensor_msgs/NavSatFix` messages for use with localization.
 
+## USB Config
+On linux, a user cannot access USB serial by default. You can permit this by running the following command:
+```console
+sudo usermod -aG dialout YOUR_USERNAME_HERE
+```
+
+Then, **make sure you logout and and re-login** before proceeding.
+
 ## Behavior / Filtering
 We only publish message UBX `NAV-PVT`/`NAV2-PVT` that indicates a valid position solution:
 - `fixType` is not `NO_FIX (0)` and not `TIME_ONLY (5)`
