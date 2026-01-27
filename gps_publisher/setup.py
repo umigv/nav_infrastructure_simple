@@ -4,7 +4,7 @@ package_name = 'gps_publisher'
 
 setup(
     name=package_name,
-    version='0.0.0',
+    version='0.1.0',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -13,9 +13,9 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='umarv',
-    maintainer_email='umarv@todo.todo',
-    description='TODO: Package description',
+    maintainer='Ryan Liao',
+    maintainer_email='ryanliao@umich.edu',
+    description='U-Blox ZED-F9P GPS data publisher',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
