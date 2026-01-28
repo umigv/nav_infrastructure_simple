@@ -160,11 +160,9 @@ def generate_launch_description():
         executable="gps_origin_initializer",
         name="gps_origin_initializer",
         output="screen",
-        parameters=[{
-            "gps_data_topic": gps_data_topic,
-            "min_samples_required": 10,
-            "set_origin_service": "/datum",
-        }],
+        remappings=[
+            ("gps", gps_data_topic),
+        ],
     )
 
     return LaunchDescription([

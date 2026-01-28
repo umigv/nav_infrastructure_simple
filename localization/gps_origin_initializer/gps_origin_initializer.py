@@ -3,35 +3,21 @@ from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix
 from robot_localization.srv import SetDatum
 from statistics import median
+import math
+from .gps_origin_initializer_config import GpsOriginInitializerConfig
+import nav_utils.config
 
 class GpsOriginInitializer(Node):
     def __init__(self):
         super().__init__("gps_origin_initializer")
 
-        # Parameters
-        self.declare_parameter("gps_data_topic", "/gps/raw")
-        self.declare_parameter("set_origin_service", "/navsat_transform/set_datum")
+        self.config = nav_utils.config.load(self, GpsOriginInitializerConfig)
 
-        self.declare_parameter("min_samples_required", 100)
-        self.declare_parameter("min_sample_duration_sec", 5.0)
-        self.declare_parameter("max_sample_duration_sec", 30.0)
-        self.declare_parameter("max_h_sigma_meter", 1.0)
+        self.gps_subscriber = self.create_subscription(NavSatFix, "gps", self.gps_callback, 10)
+        self.get_logger().info(f"Subscribing to GPS data on topic: {self.gps_subscriber.topic_name}")
 
-        # Get Parameters
-        self.gps_data_topic = self.get_parameter("gps_data_topic").value
-        self.set_origin_service = self.get_parameter("set_origin_service").value
-
-        self.min_samples_required = int(self.get_parameter("min_samples_required").value)
-        self.min_sample_duration = float(self.get_parameter("min_sample_duration_sec").value)
-        self.max_sample_duration = float(self.get_parameter("max_sample_duration_sec").value)
-        self.max_h_sigma = float(self.get_parameter("max_h_sigma_meter").value)
-
-        # Subscribers and Clients
-        self.get_logger().info(f"Subscribing to GPS data on topic: {self.gps_data_topic}")
-        self.gps_subscriber = self.create_subscription(NavSatFix, self.gps_data_topic, self.gps_callback, 10)
-
-        self.get_logger().info(f"Waiting for service {self.set_origin_service} to be available...")
-        self.client = self.create_client(SetDatum, self.set_origin_service)
+        self.client = self.create_client(SetDatum, "navsat_transform/set_datum")
+        self.get_logger().info(f"Waiting for service {self.client.srv_name} to be available...")
         self.client.wait_for_service()
 
         self.samples: list[NavSatFix] = []
@@ -39,8 +25,8 @@ class GpsOriginInitializer(Node):
 
         self.get_logger().info(
             f"Collecting GNSS samples for datum. Keep robot STILL.\n"
-            f"Policy: min_samples={self.min_samples_required}, max_sigma={self.max_h_sigma}m,\n"
-            f"        min_duration={self.min_sample_duration}s, max_duration={self.max_sample_duration}s\n"
+            f"Policy: min_samples={self.config.min_samples_required}, max_sigma={self.config.max_h_sigma_m}m,\n"
+            f"        min_duration={self.config.min_sample_duration_sec}s, max_duration={self.config.max_sample_duration_sec}s\n"
         )
 
     def gps_callback(self, msg: NavSatFix):
@@ -49,24 +35,24 @@ class GpsOriginInitializer(Node):
 
         self.get_logger().debug(f"Received data: lat={msg.latitude}, lon={msg.longitude}, alt={msg.altitude}")
 
-        h_sigma = msg.position_covariance[0] ** 0.5
-        if h_sigma > self.max_h_sigma:
-            self.get_logger().debug(f"Dropping GPS msg with high horizontal sigma: {h_sigma} > {self.max_h_sigma}")
+        h_sigma = math.sqrt(msg.position_covariance[0])
+        if h_sigma > self.config.max_h_sigma_m:
+            self.get_logger().debug(f"Dropping GPS msg with high horizontal sigma: {h_sigma} > {self.config.max_h_sigma_m}")
             return
 
         self.samples.append(msg)
 
         time_elapsed = (self.samples[-1].header.stamp.sec - self.samples[0].header.stamp.sec) + \
                        (self.samples[-1].header.stamp.nanosec - self.samples[0].header.stamp.nanosec) / 1e9
-        if len(self.samples) >= self.min_samples_required and time_elapsed >= self.min_sample_duration:
+        if len(self.samples) >= self.config.min_samples_required and time_elapsed >= self.config.min_sample_duration_sec:
             self.get_logger().info("Sufficient samples collected.")
             self.send_origin_request()
-        elif time_elapsed >= self.max_sample_duration:
+        elif time_elapsed >= self.config.max_sample_duration_sec:
             self.get_logger().info("Max sample duration reached.")
             self.send_origin_request()
 
     def send_origin_request(self):
-        self.get_logger().info(f"Collected {len(self.samples)} samples below horizontal sigma {self.max_h_sigma}m.")
+        self.get_logger().info(f"Collected {len(self.samples)} samples below horizontal sigma {self.config.max_h_sigma_m}m.")
         self.get_logger().info(str([(sample.latitude, sample.longitude) for sample in self.samples]))
         latitude = median(sample.latitude for sample in self.samples)
         longitude = median(sample.longitude for sample in self.samples)
@@ -94,7 +80,7 @@ class GpsOriginInitializer(Node):
             future.result()
             self.get_logger().info("Origin set successfully. map frame is now aligned to startup GPS origin.")
         except Exception as e:
-            self.get_logger().error(f"{self.set_origin_service} call error: {e}")
+            self.get_logger().error(f"{self.client.srv_name} call error: {e}")
         
         self.destroy_node()
 
