@@ -4,37 +4,53 @@ Small utilities for ROS 2 Python nodes:
 ### nav_utils.config
 Adds a simple config-loading utility for ROS 2.
 
-Example:
+To use, you will want to create a python dataclass where each field in the config dataclass corresponds to a ROS 2 parameter key. The field’s default value (if provided) is used as the parameter’s default.
+
+Mapping rules:
+- Each dataclass field name corresponds to a ROS 2 parameter key.
+- If the field has a default value (or default_factory), the parameter is optional and the default is used when the key is not supplied in YAML.
+- If the field has no default, the parameter is required; `load()` will raise if it is missing / unset.
+- Nested dataclasses are supported and map to nested parameter dictionaries.
+
+For example, you can create the following config dataclass:
 ```py
 from dataclasses import dataclass, field
-from rclpy.node import Node
-import nav_utils.config
 
 @dataclass
 class Weights:
     heading: float = 1.0
-    clearance: float # Required
+    clearance: float
 
 @dataclass
 class PlannerConfig:
     max_iters: int = 10_000
-    timeout_s: float = 0.2
+    timeout_s: float
     weights: Weights
+```
+
+Which would map to a ROS2 config yaml structure like this:
+```yaml
+planner:
+  ros__parameters:
+    # max_iters is optional (defaults to 10000)
+    timeout_s: 3.0            # required
+    weights:
+      # heading is optional (defaults to 1.0)
+      clearance: 0.75         # required
+```
+
+You can then load it in code by calling nav_utils.config.load
+```py
+from rclpy.node import Node
+import nav_utils.config
 
 class Planner(Node):
     __init__(self):
         self.config = nav_utils.config.load(self, PlannerConfig)
-```
-
-You can then load this using a ROS2 config yaml file like this:
-```yaml
-planner:
-  ros__parameters:
-    max_iters: 10000
-    timeout_s: 0.2
-    weights:
-      heading: 1.0
-      clearance: 0.75
+        print(self.config.max_iters)
+        print(self.config.timeout_s)
+        print(self.config.weights.clearance)
+        print(self.config.weights.heading)
 ```
 
 ### nav_utils.geometry
