@@ -1,6 +1,5 @@
 from geometry_msgs.msg import Point, Quaternion
 import math
-import sys
 
 def get_yaw_radians_from_quaternion(q: Quaternion) -> float:
     """Extract radians of yaw rotation from Quaternion https://en.wikipedia.org/wiki/Quaternion."""

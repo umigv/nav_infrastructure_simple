@@ -87,7 +87,7 @@ def load(node: Node, cls: Type[T], prefix: str = "") -> T:
     except (NameError, AttributeError, ValueError):
         try:
             type_hints = get_type_hints(cls)
-        except:
+        except Exception:
             type_hints = {}
     
     for f in fields(cls):
