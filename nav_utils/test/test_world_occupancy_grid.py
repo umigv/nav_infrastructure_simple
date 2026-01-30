@@ -5,16 +5,6 @@ from geometry_msgs.msg import Pose, Point, Quaternion
 from nav_utils.world_occupancy_grid import WorldOccupancyGrid, CellState
 from nav_utils.geometry import make_quarternion_from_yaw, make_pose
 
-def make_grid_from_target_matrix(target_matrix: np.ndarray, resolution: float = 1.0) -> OccupancyGrid:
-    """Builds an occupancy grid in cv's frame from a matrix in our frame"""
-    A = np.rot90(target_matrix, k=1)
-
-    grid = OccupancyGrid()
-    grid.info.resolution = float(resolution)
-    grid.info.height, grid.info.width = target_matrix.shape
-    grid.data = A.flatten(order="F").astype(np.int8).tolist()
-    return grid
-
 def make_occupancy_grid() -> OccupancyGrid:
     return OccupancyGrid(
         info=MapMetaData(
