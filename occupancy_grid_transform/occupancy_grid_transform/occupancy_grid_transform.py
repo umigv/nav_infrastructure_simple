@@ -31,9 +31,10 @@ class OccupancyGridTransform(Node):
         grid = np.asarray(msg.data, dtype=np.int8).reshape((msg.info.width, msg.info.height), order='F')
         grid = np.flipud(grid)
         grid = self.inflate_occupancy_grid(grid)
+        height, width = grid.shape 
 
         origin = Pose()
-        half_height_m = grid.shape[0] * msg.info.resolution / 2
+        half_height_m = height * msg.info.resolution / 2
 
         if self._odom is not None:
             yaw = get_yaw_radians_from_quaternion(self._odom.pose.pose.orientation)
@@ -58,8 +59,8 @@ class OccupancyGridTransform(Node):
             ),
             info=MapMetaData(
                 resolution=msg.info.resolution,
-                width=grid.shape[1],
-                height=grid.shape[0],
+                width=width,
+                height=height,
                 origin=origin
             ),
             data=grid.astype(np.int8).reshape(-1).tolist()
