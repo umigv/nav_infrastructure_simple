@@ -62,7 +62,7 @@ def generate_launch_description():
                 False,  False,  False,
                 False, False, False,
                 True,  False,  False,
-                False, False, False, # We could publish yaw rate, but we ignore it and use IMU's yaw rate
+                False, False, True,
                 False, False, False
             ],
             "twist0_queue_size": 50,
@@ -73,14 +73,14 @@ def generate_launch_description():
             "imu0": imu_data_topic,
             "imu0_config": [
                 False, False, False,
-                False,  False, True,
+                False,  False, False,
                 False, False, False,
                 False,  False, True,
                 False, False, False
             ],
             "imu0_queue_size": 100,
             "imu0_differential": False,
-            "imu0_relative": True,
+            "imu0_relative": False,
         }],
         remappings=[
             ("odometry/filtered", "/odometry/local"),
@@ -94,6 +94,13 @@ def generate_launch_description():
         output="screen",
         parameters=[{
             "frequency": 20.0,
+
+            "map_frame": map_frame,
+            "odom_frame": odom_frame,
+            "base_link_frame": base_frame,
+            "world_frame": odom_frame,
+            "imu_frame": imu_frame,
+
             "wait_for_datum": True,
             "zero_altitude": True,
             "broadcast_utm_transform": False,
@@ -133,7 +140,7 @@ def generate_launch_description():
                 True,  True,  False,
                 False, False, True,
                 True,  False,  False,
-                False, False, True,
+                False, False, False,
                 False, False, False
             ],
             "odom0_queue_size": 20,
