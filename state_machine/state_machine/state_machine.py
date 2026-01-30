@@ -24,7 +24,7 @@ class StateMachine(Node):
     def __init__(self) -> None:
         super().__init__("state_machine")
 
-        self.publisher = self.create_publisher(String, "/state", QoSProfile(
+        self.publisher = self.create_publisher(String, "state", QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
             depth=1,
             reliability=QoSReliabilityPolicy.RELIABLE,
@@ -33,10 +33,10 @@ class StateMachine(Node):
 
         self.last_state: Optional[State] = None
 
-        self.set_ramp_service = self.create_service(SetBool, "/state/set_ramp", self.set_ramp_callback)
+        self.set_ramp_service = self.create_service(SetBool, "state/set_ramp", self.set_ramp_callback)
         self.ramp_enabled = False
 
-        self.set_recovery_service = self.create_service(SetBool, "/state/set_recovery", self.set_recovery_callback)
+        self.set_recovery_service = self.create_service(SetBool, "state/set_recovery", self.set_recovery_callback)
         self.recovery_enabled = False
 
         self.publish_state_if_changed(reason="init")
@@ -70,7 +70,7 @@ class StateMachine(Node):
         self.recovery_enabled = req.data
         res.success = True
         self.get_logger().info(res.message + f" (ramp_enabled={self.ramp_enabled})")
-        self.publish_state_if_changed(reason="/state/set_recovery")
+        self.publish_state_if_changed(reason="state/set_recovery")
         return res
 
     def set_ramp_callback(self, req: SetBool.Request, res: SetBool.Response) -> SetBool.Response:
@@ -82,7 +82,7 @@ class StateMachine(Node):
         self.ramp_enabled = req.data
         res.success = True
         self.get_logger().info(res.message + f" (recovery_enabled={self.recovery_enabled})")
-        self.publish_state_if_changed(reason="/state/set_ramp")
+        self.publish_state_if_changed(reason="state/set_ramp")
         return res
 
 def main() -> None:

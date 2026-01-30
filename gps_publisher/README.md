@@ -22,7 +22,7 @@ Covariance is filled using u-blox accuracy fields:
 - `hAcc` / `vAcc` (mm → meters → meters²), published as diagonal covariance.
 
 ## Published Topics
-`gps/raw` (`sensor_msgs/NavSatFix`) - processed GPS fix messages
+`gps` (`sensor_msgs/NavSatFix`) - processed GPS fix messages
 
 ## GPS Configurations
 > Note: Message “rate” in `CFG-MSG` is **messages per navigation cycle**.  

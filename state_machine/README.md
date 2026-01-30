@@ -15,11 +15,11 @@ There are three mutually exclusive states:
 4. Late-joining subscribers immediately receive the most recent state
 
 ## Published Topics
-`/state` (`std_msgs/String`) - The current robot state as one of `"normal"`,  `"ramp"`, or `"recovery"`
+`state` (`std_msgs/String`) - The current robot state as one of `"normal"`,  `"ramp"`, or `"recovery"`
 
 ## Services
-`/state/set_ramp` (`std_srvs/SetBool`) - Enable or disable ramp mode.  
-`/state/set_recovery` (`std_srvs/SetBool`) - Enable or disable recovery mode.
+`state/set_ramp` (`std_srvs/SetBool`) - Enable or disable ramp mode.  
+`state/set_recovery` (`std_srvs/SetBool`) - Enable or disable recovery mode.
 
 ## Example Usage
 
