@@ -14,7 +14,7 @@ setup(
     ],  
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='ryanliao',
+    maintainer='Ryan Liao',
     maintainer_email='ryanliao@umich.edu',
     description='Localization helper nodes',
     license='Apache-2.0',
