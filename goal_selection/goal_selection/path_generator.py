@@ -33,19 +33,19 @@ DRIVABLE_CELL_VALUE = 0
 def index_occupancy_grid(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex):
     """Index occupancy grid 1D data array using 2D coordinates."""
     x_component = index.x + int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution)
-    y_component = -index.y + occupancy_grid.info.width//2
-    return occupancy_grid.data[x_component * occupancy_grid.info.width + y_component]
+    y_component = -index.y + occupancy_grid.info.height//2
+    return occupancy_grid.data[y_component * occupancy_grid.info.width + x_component]
 
 def is_index_out_of_bounds(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex) -> bool:
     """Calculate whether or not index is out of bounds"""
     # Convert to bottom of left of occupancy origin
-    adjusted_y = -index.y + occupancy_grid.info.width//2
+    adjusted_y = -index.y + occupancy_grid.info.height//2
     adjusted_x = index.x + int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution)
 
     return adjusted_y < 0 \
-            or adjusted_y >= occupancy_grid.info.width \
+            or adjusted_y >= occupancy_grid.info.height \
             or adjusted_x < 0 \
-            or adjusted_x >= occupancy_grid.info.height
+            or adjusted_x >= occupancy_grid.info.width
 
 def get_yaw_radians_from_quaternion(q: Quaternion):
     """Extract radians of yaw rotation from Quaternion https://en.wikipedia.org/wiki/Quaternion."""
