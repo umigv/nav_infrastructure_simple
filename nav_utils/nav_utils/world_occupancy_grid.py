@@ -5,6 +5,7 @@ import math
 from typing import Iterator
 from enum import IntEnum
 from nav_utils.geometry import get_yaw_radians_from_quaternion, rotate_by_yaw
+from std_msgs.msg import Header
 
 class CellState(IntEnum):
     """
