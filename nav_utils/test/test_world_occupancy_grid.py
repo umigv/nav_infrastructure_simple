@@ -15,15 +15,15 @@ def make_grid_from_target_matrix(target_matrix: np.ndarray, resolution: float = 
     grid.data = A.flatten(order="F").astype(np.int8).tolist()
     return grid
 
-def make_occupancy_grid(width: int, height: int, resolution: float, origin: Pose) -> OccupancyGrid:
+def make_occupancy_grid() -> OccupancyGrid:
     return OccupancyGrid(
         info=MapMetaData(
-            resolution=resolution,
-            width=width,
-            height=height,
-            origin=origin
+            resolution=0.5,
+            width=6,
+            height=6,
+            origin=make_pose(x=2.269615242270663, y=1.0009618943233418, yaw=math.pi/6)
         ),
-        data=np.zeros(width * height).astype(np.int8).tolist()
+        data=np.zeros(36).astype(np.int8).tolist()
     )
 
 def point_is_close(pointA: Point, pointB: Point) -> bool:
@@ -31,38 +31,19 @@ def point_is_close(pointA: Point, pointB: Point) -> bool:
     return math.isclose(pointA.x, pointB.x, abs_tol=0.01) and math.isclose(pointA.y, pointB.y, abs_tol=0.01)
 
 def test_world_to_grid_index():
-    grid = WorldOccupancyGrid(
-        make_occupancy_grid(
-            width=6, 
-            height=6,
-            resolution=0.5,
-            origin=make_pose(x=2.269615242270663, y=1.0009618943233418, yaw=math.pi/6)
-        )
-    )
+    grid = WorldOccupancyGrid(make_occupancy_grid())
 
     assert grid._world_to_grid_index(Point(x=3.25, y=3.5, z=0.0)) == (4, 3)
     assert grid._world_to_grid_index(Point(x=2.0, y=1.0, z=0.0)) == (-1, 0)
 
 def test_grid_index_center_to_world():
-    grid = WorldOccupancyGrid(
-        make_occupancy_grid(
-            width=6, 
-            height=6,
-            resolution=0.5,
-            origin=make_pose(x=2.269615242270663, y=1.0009618943233418, yaw=math.pi/6)
-        )
-    )
+    grid = WorldOccupancyGrid(make_occupancy_grid())
 
     assert point_is_close(grid._grid_index_center_to_world(2, 0), Point(x=3.2271, y=1.8425, z=0.0))
     assert point_is_close(grid._grid_index_center_to_world(2, -1), Point(x=3.4771, y=1.4095, z=0.0))
 
 def test_state():
-    occupancy_grid= make_occupancy_grid(
-        width=6, 
-        height=6,
-        resolution=0.5,
-        origin=make_pose(x=2.269615242270663, y=1.0009618943233418, yaw=math.pi/6)
-    )
+    occupancy_grid = make_occupancy_grid()
     occupancy_grid.data[22] = CellState.OCCUPIED
     
     grid = WorldOccupancyGrid(occupancy_grid)
@@ -72,14 +53,7 @@ def test_state():
     assert grid.state(Point(x=2.0, y=1.0, z=0.0)) == CellState.UNKNOWN
 
 def test_neighbors():
-    grid = WorldOccupancyGrid(
-        make_occupancy_grid(
-            width=6, 
-            height=6,
-            resolution=0.5,
-            origin=make_pose(x=2.269615242270663, y=1.0009618943233418, yaw=math.pi/6)
-        )
-    )
+    grid = WorldOccupancyGrid(make_occupancy_grid())
 
     point = Point(x=3.25, y=3.5, z=0.0)
     assert grid._world_to_grid_index(point) == (4, 3)
@@ -107,28 +81,14 @@ def test_neighbors():
     ]
 
 def test_hash_key_same_grid():
-    grid = WorldOccupancyGrid(
-        make_occupancy_grid(
-            width=6, 
-            height=6,
-            resolution=0.5,
-            origin=make_pose(x=2.269615242270663, y=1.0009618943233418, yaw=math.pi/6)
-        )
-    )
+    grid = WorldOccupancyGrid(make_occupancy_grid())
 
     point1 = Point(x=3.25, y=3.5, z=0.0)
     point2 = Point(x=3.25, y=3.5, z=0.0)
     assert grid.hash_key(point1) == grid.hash_key(point2)
 
 def test_hash_key_unique_indices():
-    grid = WorldOccupancyGrid(
-        make_occupancy_grid(
-            width=6, 
-            height=6,
-            resolution=0.5,
-            origin=make_pose(x=2.269615242270663, y=1.0009618943233418, yaw=math.pi/6)
-        )
-    )
+    grid = WorldOccupancyGrid(make_occupancy_grid())
 
     # Arbitrary selection of indices to check for hash collision
     indices = [(4, 3), (5, 3), (4, 4), (4, 2), (3, 3), (-1, 0), (2, -1), (-2, -3)]
