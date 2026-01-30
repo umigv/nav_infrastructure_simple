@@ -231,5 +231,5 @@ class WorldOccupancyGrid:
         rotated = rotate_by_yaw(grid, self._yaw)
 
         return Point(x = rotated.x + self._occupancy_grid.info.origin.position.x, 
-                    y = rotated.y + self._occupancy_grid.info.origin.position.y, 
-                    z = 0.0)
+                     y = rotated.y + self._occupancy_grid.info.origin.position.y, 
+                     z = 0.0)
