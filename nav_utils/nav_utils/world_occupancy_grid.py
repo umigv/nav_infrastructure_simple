@@ -12,7 +12,7 @@ class CellState(IntEnum):
     Values follow the ROS occupancy grid convention:
     - UNKNOWN  (-1): Cell occupancy is unknown or outside the grid bounds.
     - FREE      (0): Cell is known to be free and traversable.
-    - OCCUPIED (100): Cell is occupied by an obstacle.
+    - OCCUPIED (1): Cell is occupied by an obstacle.
 
     This enum provides a semantic layer over raw occupancy values and is used throughout planning code to reason about 
     traversability.
@@ -20,7 +20,26 @@ class CellState(IntEnum):
     
     UNKNOWN    = -1
     FREE       = 0
-    OCCUPIED   = 100
+    OCCUPIED   = 1
+
+    @staticmethod
+    def from_occupancy(value: int) -> "CellState":
+        """
+        Classify a raw ROS occupancy value into a CellState.
+
+        Returns:
+            UNKNOWN if value is -1, FREE if value is 0, OCCUPIED if value is between 1 and 100
+        """
+        if value == -1:
+            return CellState.UNKNOWN
+        
+        if value == 0:
+            return CellState.FREE
+        
+        if 1 <= value <= 100:
+            return CellState.OCCUPIED
+        
+        raise ValueError(f"Invalid occupancy value: {value} (expected -1, 0, or 1..100)")
 
     @property
     def drivable(self) -> bool:
@@ -85,7 +104,7 @@ class WorldOccupancyGrid:
         if not(0 <= grid_x < self._occupancy_grid.info.width and 0 <= grid_y < self._occupancy_grid.info.height):
             return CellState.UNKNOWN
 
-        return CellState(int(self._occupancy_grid.data[grid_y * self._occupancy_grid.info.width + grid_x]))
+        return CellState.from_occupancy(self._occupancy_grid.data[grid_y * self._occupancy_grid.info.width + grid_x])
 
     def neighbors4(self, point: Point) -> Iterator[Point]:
         """
