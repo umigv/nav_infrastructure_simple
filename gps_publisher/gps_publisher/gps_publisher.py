@@ -5,21 +5,24 @@ from sensor_msgs.msg import NavSatFix, NavSatStatus
 from builtin_interfaces.msg import Time
 from serial import Serial
 from pyubx2 import UBXReader, UBX_PROTOCOL
+import nav_utils.config
+from .gps_publisher_config import GpsPublisherConfig
 
 UBX_FIX_TYPE_NO_FIX = 0
 UBX_FIX_TYPE_TIME_ONLY = 5
 
-class GPSCoordPublisher(Node):
+class GpsPublisher(Node):
     def __init__(self):
         super().__init__('gps')
 
-        self.publisher = self.create_publisher(NavSatFix, 'gps/raw', 10)
+        self.config = nav_utils.config.load(self, GpsPublisherConfig)
 
-        self.stream = Serial('/dev/ttyACM0', 460800, timeout=0.1)
+        self.publisher = self.create_publisher(NavSatFix, 'gps', 10)
+
+        self.stream = Serial(self.config.serial_port, 460800, timeout=0.1)
         self.ubx_reader = UBXReader(self.stream, protfilter=UBX_PROTOCOL)
 
-        self.create_timer(0.01, self.poll)
-        self.frame_id = "gps_link"
+        self.create_timer(1.0 / self.config.poll_rate_hz, self.poll)
         
     def poll(self):
         try:
@@ -52,7 +55,7 @@ class GPSCoordPublisher(Node):
     def publish_from_pvt(self, data):
         fix = NavSatFix()
         fix.header.stamp = self.resolve_timestamp(data)
-        fix.header.frame_id = self.frame_id
+        fix.header.frame_id = self.config.gps_frame_id
 
         fix.status.status = NavSatStatus.STATUS_GBAS_FIX if data.diffSoln else NavSatStatus.STATUS_FIX
         fix.status.service = NavSatStatus.SERVICE_GPS
@@ -91,11 +94,11 @@ class GPSCoordPublisher(Node):
 
         return Time(sec=int(seconds), nanosec=int(data.nano))
 
-def main(args=None):
-    rclpy.init(args=args)
-    publisher = GPSCoordPublisher()
-    rclpy.spin(publisher)
-    rclpy.shutdown()
-
-if __name__ == '__main__':
-    main()
+def main() -> None:
+    rclpy.init()
+    node = GpsPublisher()
+    try:
+        rclpy.spin(node)
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()

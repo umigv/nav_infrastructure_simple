@@ -3,7 +3,7 @@
 <package format="3">
   <name>state_machine</name>
   <version>0.1.0</version>
-  <description>ROS 2 state machine for publishing robot operating modes and handling state transitions</description>
+  <description>ROS2 state machine for publishing robot operating modes and handling state transitions</description>
   <maintainer email="ryanliao@umich.edu">Ryan Liao</maintainer>
   <license>Apache-2.0</license>
 
