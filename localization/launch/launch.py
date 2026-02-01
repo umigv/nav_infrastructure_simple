@@ -20,8 +20,8 @@ def generate_launch_description():
         name="tf_base_to_imu",
         output="screen",
         arguments=[
-            "--x", "0.0", "--y", "0.0", "--z", "0.0", # TODO: TUNE
-            "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0", # TODO: TUNE
+            "--x", "-0.0508", "--y", "0.0", "--z", "1.524",
+            "--roll", "0.0", "--pitch", "-0.488692", "--yaw", "0.0",
             "--frame-id", base_frame,
             "--child-frame-id", imu_frame,
         ],
@@ -33,8 +33,8 @@ def generate_launch_description():
         name="tf_base_to_gps",
         output="screen",
         arguments=[
-            "--x", "0.0", "--y", "0.0", "--z", "0.0", # TODO: TUNE
-            "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0", # TODO: TUNE
+            "--x", "0.0", "--y", "0.0", "--z", "0.8128",
+            "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0",
             "--frame-id", base_frame,
             "--child-frame-id", gps_frame,
         ],
