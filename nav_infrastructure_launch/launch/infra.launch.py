@@ -26,9 +26,13 @@ def generate_launch_description():
             name='goal_selection'
         ),
         Node(
-            package='occupancy_grid_inflation',
-            executable='inflation_node',
-            name='inflation_node'
+            package='occupancy_grid_transform',
+            executable='occupancy_grid_transform',
+            name='occupancy_grid_transform',
+            remappings=[
+                ("occupancy_grid", "occ_grid"),
+                ("occupancy_grid_transform", "inflated_occupancy_grid"),
+            ],
         ),
         Node(
             package='path_tracking',
