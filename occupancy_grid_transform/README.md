@@ -1,12 +1,13 @@
 ## occupancy_grid_transform
-This package consumes the occupancy grid provided by CV, converts it into ROS row-major convention, applies obstacle inflation, and republishes a world-aligned occupancy grid suitable for planning.
+This package consumes the occupancy grid provided by CV, converts it into ROS row-major convention, applies obstacle 
+inflation, and republishes a world-aligned occupancy grid suitable for planning.
 
 ### Grid conventions
 The occupancy grid from CV is expected to have the following conventions
 - Column major
 - Height = number of cells in +x direction, width = number of cells in +y direction
 - Top left is origin
-- Is centered around the robot in the y axis, and starts robot_forward_offset_m meters in front of the robot
+- Is centered around the robot in the y axis, and starts `robot_forward_offset_m` meters in front of the robot
 
 The occupancy grid transformed by the node has the standard ROS2 convention, where
 - Row major

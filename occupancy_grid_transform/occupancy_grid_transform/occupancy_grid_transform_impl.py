@@ -11,10 +11,43 @@ from itertools import product
 from nav_utils.geometry import get_yaw_radians_from_quaternion, rotate_by_yaw
 
 def cv_occupancy_grid_to_ros_grid(grid: OccupancyGrid) -> np.ndarray:
+    """
+    Convert an incoming CV-frame occupancy grid into a ROS-aligned 2D array.
+
+    The CV-frame is expected to have the following conventions
+    - Column major
+    - Height = number of cells in +x direction, width = number of cells in +y direction
+    - Top left is origin
+
+    The transformed 2D array has the standard ROS2 convention, where
+    - Row major
+    - Height = number of cells in +y direction, width = number of cells in +x direction
+    - Bottom left is origin
+
+    Args:
+        grid: Incoming `nav_msgs/msg/OccupancyGrid`.
+
+    Returns:
+        A 2D `np.ndarray` of dtype `int8` with shape `(height, width)` under ROS convention.
+    """
+
     grid = np.asarray(grid.data, dtype=np.int8).reshape((grid.info.width, grid.info.height), order='F')
     return np.flipud(grid)
 
 def inflate_grid(grid: np.ndarray, params: InflationParams) -> np.ndarray:
+    """
+    Inflate obstacles in a 2D occupancy grid.
+
+    For each occupied cell (value 100), this expands obstacle values based on the provided InflationParams
+
+    Args:
+        grid: 2D occupancy grid of shape `(height, width)` with values in `[-1, 100]` (unknown/free/occupied).
+        params: Inflation tuning parameters (hard radius, soft radius, decay).
+
+    Returns:
+        A new 2D `np.ndarray` (dtype `int8`) of the same shape containing the inflated occupancy values.
+    """
+
     r_hard = params.inflation_radius_cells
     r_soft = params.inflation_falloff_radius_cells
     decay  = params.inflation_decay_factor
@@ -42,6 +75,26 @@ def inflate_grid(grid: np.ndarray, params: InflationParams) -> np.ndarray:
     return output.astype(np.int8)
 
 def compute_origin_pose(odom: Optional[Pose], robot_forward_offset_m: float, grid_height_cells: int, resolution: float) -> Pose:
+    """
+    Compute the published OccupancyGrid origin pose.
+
+    The returned pose corresponds to `OccupancyGrid.info.origin`: the world pose of the grid's (0, 0) cell (i.e., the 
+    grid's lower-left corner in the grid's own coordinate system).
+
+    This transform assumes the grid is:
+    - shifted `robot_forward_offset_m` meters forward of the robot along +x
+    - centered laterally on the robot, so the origin is `height/2` cells to the right (negative y) of the robot
+
+    Args:
+        odom: Robot pose in the target frame. If None, the origin is assumed to be (0, 0, 0).
+        robot_forward_offset_m: Forward distance (meters) from the robot to the grid origin along +x.
+        grid_height_cells: Grid height (cells), used to center the grid about the robot in y.
+        resolution: Cell size (meters/cell).
+
+    Returns:
+        A `geometry_msgs/msg/Pose` suitable for `OccupancyGrid.info.origin`.
+    """
+
     local = Point(x=robot_forward_offset_m, y=-grid_height_cells * resolution / 2.0, z=0.0)
 
     if odom is not None:
