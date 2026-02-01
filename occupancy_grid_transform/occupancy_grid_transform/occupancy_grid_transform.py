@@ -26,7 +26,7 @@ class OccupancyGridTransform(Node):
 
     def occupancy_grid_callback(self, msg: OccupancyGrid) -> None:
         grid = cv_occupancy_grid_to_ros_grid(msg)
-        grid = inflate_grid(grid, self.config.inflation_params)
+        inflated_grid = inflate_grid(grid, self.config.inflation_params)
         height, width = grid.shape
         origin = compute_origin_pose(odom=self._odom.pose.pose if self._odom is not None else None, 
                                      robot_forward_offset_m=self.config.robot_forward_offset_m, 
@@ -43,7 +43,7 @@ class OccupancyGridTransform(Node):
                 height=height,
                 origin=origin
             ),
-            data=grid.astype(np.int8).reshape(-1).tolist()
+            data=inflated_grid.astype(np.int8).reshape(-1).tolist()
         ))
         
 def main() -> None:
