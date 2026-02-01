@@ -39,7 +39,7 @@ class GPSWaypoint:
     longitude: float
 
 # Waypoints are constant goals, supplied by the competition organizer
-WAYPOINTS_FILE_PATH = pathlib.Path("/home/arv/arv-ws/src/nav_infrastructure_simple/goal_selection/waypoints.json")
+WAYPOINTS_FILE_PATH = pathlib.Path("/home/umarv/ros2_ws/src/nav_infrastructure_simple/goal_selection/waypoints.json")
 # How often a path is generated and published, in seconds.
 PATH_PUBLISH_PERIOD_SECONDS = 2
 
@@ -72,7 +72,7 @@ class GoalSelectionNode(Node):
 
         self.create_subscription(
             NavSatFix,
-            "/gps_coords",
+            "/gps",
             self.gps_callback,
             10
         )

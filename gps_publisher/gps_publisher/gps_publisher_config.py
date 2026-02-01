@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class GpsPublisherConfig:
-    serial_port: str = '/dev/ttyACM0'
+    serial_port: str = '/dev/ttyACM4'
     poll_rate_hz: float = 100.0
     gps_frame_id: str = "gps_link"
 
