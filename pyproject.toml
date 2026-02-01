@@ -1,0 +1,82 @@
+[project]
+name = "nav-infrastructure-tooling"
+version = "0.1.0"
+description = "Tooling config for a ROS 2 Python workspace"
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6.0",
+    "mypy>=1.8",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+exclude = [
+    ".git",
+    "build",
+    "install",
+    "log",
+    "**/__pycache__",
+    "**/*.egg-info",
+    "**/.pytest_cache",
+    "**/.mypy_cache",
+    "**/resource",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # import sorting
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "SIM", # simplify
+    "RUF", # ruff rules
+    "A",   # builtins shadowing
+    "C4",  # comprehension optimizations
+    "PIE", # misc correctness
+    "ISC"  # string concat issues
+]
+ignore = [
+    "E501", # formatter handles line wrapping
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/test/**.py" = [
+    "B011", # asserts, tests use them
+]
+
+[tool.mypy]
+python_version = "3.10"
+pretty = true
+show_error_codes = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+exclude = [
+    "build/",
+    "install/",
+    "log/",
+]
+namespace_packages = true
+explicit_package_bases = true
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = [
+    "rclpy.*",
+    "builtin_interfaces.*",
+    "std_msgs.*",
+    "geometry_msgs.*",
+    "nav_msgs.*",
+    "sensor_msgs.*",
+    "tf2_ros.*",
+    "tf_transformations.*",
+]
+ignore_missing_imports = true
