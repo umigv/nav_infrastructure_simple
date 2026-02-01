@@ -63,6 +63,7 @@ exclude = [
     "build/",
     "install/",
     "log/",
+    "(^|/)setup\\.py$",
 ]
 namespace_packages = true
 explicit_package_bases = true
@@ -76,6 +77,16 @@ module = [
     "geometry_msgs.*",
     "nav_msgs.*",
     "sensor_msgs.*",
+    "std_srvs.*",
+    "visualization_msgs.*",
+
+    "launch.*",
+    "launch_ros.*",
+
+    "ament_copyright.*",
+    "ament_flake8.*",
+    "ament_pep257.*",
+
     "tf2_ros.*",
     "tf_transformations.*",
 ]
