@@ -179,6 +179,7 @@ def generate_launch_description():
         output="screen",
         remappings=[
             ("gps", gps_data_topic),
+            ("set_datum", "datum")
         ],
     )
 

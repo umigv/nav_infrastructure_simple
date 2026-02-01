@@ -21,7 +21,7 @@ class GpsOriginInitializer(Node):
             f"Subscribing to GPS data on topic: {self.gps_subscriber.topic_name}"
         )
 
-        self.client = self.create_client(SetDatum, "navsat_transform/set_datum")
+        self.client = self.create_client(SetDatum, "set_datum")
         self.get_logger().info(
             f"Waiting for service {self.client.srv_name} to be available..."
         )
