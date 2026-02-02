@@ -75,6 +75,7 @@ exclude = [
 namespace_packages = true
 explicit_package_bases = true
 ignore_missing_imports = false
+disable_error_code = ["import-untyped"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -87,7 +88,9 @@ module = [
     "std_srvs.*",
     "visualization_msgs.*",
 
+    "launch",
     "launch.*",
+    "launch_ros",
     "launch_ros.*",
 
     "ament_copyright.*",
@@ -98,3 +101,4 @@ module = [
     "tf_transformations.*",
 ]
 ignore_missing_imports = true
+disable_error_code = ["attr-defined"]
