@@ -6,7 +6,13 @@ ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 cd "$ROOT"
 
 echo "==> Ruff lint (fix: imports + safe fixes)"
-ruff check --fix .
+FIX_SUMMARY="$(ruff check --fix --exit-zero . 2>/dev/null | grep -E 'fixed' || true)"
+
+if [[ -n "$FIX_SUMMARY" ]]; then
+  echo "$FIX_SUMMARY"
+else
+  echo "No lint fixes applied"
+fi
 
 echo "==> Ruff format"
 ruff format .
