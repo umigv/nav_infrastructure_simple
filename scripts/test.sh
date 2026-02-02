@@ -1,29 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-(
-  SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-  ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-  cd "$ROOT"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"     # ws/src/nav_infrastructure_simple
+WS_ROOT="$(cd -- "${REPO_ROOT}/../.." && pwd)"     # ws
 
-  PKGS="${PKGS:-}"
+echo "==> Repo root:      $REPO_ROOT"
+echo "==> Workspace root: $WS_ROOT"
 
-  BUILD_ARGS=(--symlink-install)
-  TEST_ARGS=()
-  if [[ -n "$PKGS" ]]; then
-    BUILD_ARGS+=(--packages-select $PKGS)
-    TEST_ARGS+=(--packages-select $PKGS)
-  fi
+cd "$WS_ROOT"
 
-  echo "==> colcon build ${BUILD_ARGS[*]}"
-  colcon build "${BUILD_ARGS[@]}"
+if [[ -f "$WS_ROOT/install/setup.bash" ]]; then
+  set +u
+  # shellcheck disable=SC1090
+  source "$WS_ROOT/install/setup.bash"
+  set -u
+else
+  echo "ERROR: $WS_ROOT/install/setup.bash not found. Run scripts/build.sh first."
+  exit 1
+fi
 
-  # shellcheck disable=SC1091
-  source install/setup.bash
+echo "==> Discovering packages under repo root"
+mapfile -t PKGS < <(colcon list --base-paths "$REPO_ROOT" --names-only)
 
-  echo "==> colcon test ${TEST_ARGS[*]}"
-  colcon test "${TEST_ARGS[@]}"
+if [[ "${#PKGS[@]}" -eq 0 ]]; then
+  echo "ERROR: No colcon packages found under $REPO_ROOT"
+  exit 1
+fi
 
-  echo "==> colcon test-result --verbose"
-  colcon test-result --verbose
-)
+echo "==> colcon test (${#PKGS[@]} packages from repo)"
+colcon test --packages-select "${PKGS[@]}" --event-handlers console_direct+
+
+echo "==> colcon test-result (verbose)"
+colcon test-result --verbose
