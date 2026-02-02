@@ -4,15 +4,25 @@ from launch_ros.actions import Node
 # [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
 
 def generate_launch_description():
-    twist_data_topic = "/enc_vel" # TODO: tune encoder covariance if needed
-    imu_data_topic = "/zed/zed_node/imu/data"
-    gps_data_topic = "/gps/raw"
+    twist_data_topic = "enc_vel"
+    imu_data_topic = "zed/zed_node/imu/data"
+    gps_data_topic = "gps/raw"
 
     odom_frame = "odom"
     map_frame = "map"
     base_frame = "base_link"
     imu_frame = "zed_imu_link"
     gps_frame = "gps_link"
+
+    gps = Node(
+        package="gps_publisher",
+        executable="gps_publisher",
+        name="gps_publisher",
+        output="screen",
+        remappings=[
+            ("gps", gps_data_topic),
+        ]
+    )
 
     tf_base_to_imu = Node(
         package="tf2_ros",
@@ -83,7 +93,7 @@ def generate_launch_description():
             "imu0_relative": False,
         }],
         remappings=[
-            ("odometry/filtered", "/odometry/local"),
+            ("odometry/filtered", "odometry/local"),
         ],
     )
 
@@ -112,9 +122,9 @@ def generate_launch_description():
         remappings=[
             ("imu", imu_data_topic),
             ("gps/fix", gps_data_topic),
-            ("odometry/filtered", "/odometry/local"),
-            ("odometry/gps", "/odometry/gps"),
-            ("gps/filtered", "/gps"),
+            ("odometry/filtered", "odometry/local"),
+            ("odometry/gps", "odometry/gps"),
+            ("gps/filtered", "gps"),
         ],
     )
 
@@ -135,7 +145,7 @@ def generate_launch_description():
             "world_frame": map_frame,
             "publish_tf": True,
 
-            "odom0": "/odometry/local",
+            "odom0": "odometry/local",
             "odom0_config": [
                 True,  True,  False,
                 False, False, True,
@@ -145,7 +155,7 @@ def generate_launch_description():
             ],
             "odom0_queue_size": 20,
 
-            "odom1": "/odometry/gps",
+            "odom1": "odometry/gps",
             "odom1_config": [
                 True,  True,  False,
                 False, False, False,
@@ -158,7 +168,7 @@ def generate_launch_description():
             "odom1_relative": False,
         }],
         remappings=[
-            ("odometry/filtered", "/odometry/global"),
+            ("odometry/filtered", "odometry/global"),
         ],
     )
     
@@ -169,10 +179,12 @@ def generate_launch_description():
         output="screen",
         remappings=[
             ("gps", gps_data_topic),
+            ("set_datum", "datum")
         ],
     )
 
     return LaunchDescription([
+        gps,
         tf_base_to_imu,
         tf_base_to_gps,
         ekf_local,
