@@ -33,4 +33,4 @@ jobs:
 
       - name: Run checks
         run: |
-          bash scripts/check.sh
+          bash scripts/checks.sh

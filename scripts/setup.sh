@@ -17,7 +17,7 @@ echo "==> Install Python tooling deps (editable)"
 python3 -m pip install -U pip
 python3 -m pip install -e "$REPO_ROOT[tooling]"
 
-echo "==> Install ROS deps via rosdep (workspace src/)"
+echo "==> Install ROS deps via rosdep (repo)"
 rosdep install --from-paths "$REPO_ROOT" --ignore-src -r -y
 
 echo "==> Setup complete."
