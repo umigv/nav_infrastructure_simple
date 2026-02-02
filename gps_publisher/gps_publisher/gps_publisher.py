@@ -13,7 +13,7 @@ UBX_FIX_TYPE_TIME_ONLY = 5
 
 class GpsPublisher(Node):
     def __init__(self):
-        super().__init__('gps')
+        super().__init__('gps_publisher')
 
         self.config = nav_utils.config.load(self, GpsPublisherConfig)
 
