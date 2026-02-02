@@ -2,8 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"     # ws/src/nav_infrastructure_simple
-WS_ROOT="$(cd -- "${REPO_ROOT}/../.." && pwd)"     # ws
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+WS_ROOT="$(cd -- "${REPO_ROOT}/../.." && pwd)"
 
 echo "==> Repo root:      $REPO_ROOT"
 echo "==> Workspace root: $WS_ROOT"

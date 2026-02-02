@@ -2,15 +2,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"     # ws/src/nav_infrastructure_simple
-WS_ROOT="$(cd -- "${REPO_ROOT}/../.." && pwd)"     # ws
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+WS_ROOT="$(cd -- "${REPO_ROOT}/../.." && pwd)"
 
 echo "==> Repo root:      $REPO_ROOT"
 echo "==> Workspace root: $WS_ROOT"
 
 cd "$WS_ROOT"
 
-# Source install if present (helps overlays / finding packages), but don't die on nounset issues.
 if [[ -f "$WS_ROOT/install/setup.bash" ]]; then
   set +u
   # shellcheck disable=SC1090
