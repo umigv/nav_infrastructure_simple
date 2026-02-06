@@ -3,9 +3,29 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist, TransformStamped
 from nav_msgs.msg import Odometry
 from visualization_msgs.msg import Marker
+from sensor_msgs.msg import NavSatFix
 from tf2_ros import TransformBroadcaster
-from math import sin, cos, atan2
+from math import sin, cos, atan2, pi
 import time
+import random
+from pyproj import Transformer
+
+GPS_ZONE = "EPSG:4326"
+FMCRB_METERS_ZONE = "EPSG:32617"
+
+def lat_long_degrees_to_meters(latitude: float, longitude: float) -> tuple[float, float]:
+    """
+    Convert latitude and longitude from degrees to meters.
+    """
+    transformer = Transformer.from_crs(GPS_ZONE, FMCRB_METERS_ZONE, always_xy=True)
+    return transformer.transform(longitude, latitude)[::-1]
+
+def lat_long_meters_to_degrees(x: float, y: float) -> tuple[float, float]:
+    """
+    Convert latitude and longitude from degrees to meters.
+    """
+    transformer = Transformer.from_crs(FMCRB_METERS_ZONE, GPS_ZONE, always_xy=True)
+    return transformer.transform(y, x)[::-1]
 
 class PointSimulator(Node):
     def __init__(self):
@@ -13,6 +33,13 @@ class PointSimulator(Node):
         self.sub = self.create_subscription(Twist, '/joy_cmd_vel', self.cmd_vel_callback, 10)
         self.odom_pub = self.create_publisher(Odometry, '/odom', 10)
         self.marker_pub = self.create_publisher(Marker, '/visualization_marker', 10)
+        self.gps_pub = self.create_publisher(NavSatFix, '/gps_coords', 10)
+        
+        # Subscribe to gps_coords to get the origin
+        self.origin_lat = None
+        self.origin_lon = None
+        self.origin_sub = self.create_subscription(NavSatFix, '/gps_coords', self.origin_callback, 10)
+
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.timer = self.create_timer(0.1, self.update_position)
@@ -22,23 +49,31 @@ class PointSimulator(Node):
         self.theta = 0.0
         self.vx = 0.0
         self.vtheta = 0.0
-        self.last_time = time.time()
-        self.last_cmd_time = time.time()
+        self.last_time_nanoseconds = time.time() * 1e9
+        self.last_cmd_time_nanoseconds = time.time() * 1e9
+        self.last_gps_update_time_seconds = 0
+
+    def origin_callback(self, msg: NavSatFix):
+        self.origin_lat = msg.latitude
+        self.origin_lon = msg.longitude
+        self.get_logger().info(f"GPS Origin set to: {self.origin_lat}, {self.origin_lon}")
+
+        self.destroy_subscription(self.origin_sub) 
 
     def cmd_vel_callback(self, msg):
         """Sets the robot velocity and updates when robot last recieved command. Called from the joystick subcription."""
         self.vx = msg.linear.x
         self.vtheta = msg.angular.z
-        self.last_cmd_time = self.get_clock().now().nanoseconds 
+        self.last_cmd_time_nanoseconds = self.get_clock().now().nanoseconds 
 
     def update_position(self):
         """Sets the robot's current position based on velocity; publishes odometry and position data."""
-        current_time = self.get_clock().now().nanoseconds
-        dt = (current_time - self.last_time) / 1e9  # Convert nanoseconds to seconds
-        self.last_time = current_time
+        current_time_nanos = self.get_clock().now().nanoseconds
+        dt = (current_time_nanos - self.last_time_nanoseconds) / 1e9  # Convert nanoseconds to seconds
+        self.last_time_nanoseconds = current_time_nanos
 
         # Check if no cmd_vel was received recently (e.g., within 0.5 sec)
-        if current_time - self.last_cmd_time > 5e8:  # 0.5 seconds in nanoseconds
+        if current_time_nanos - self.last_cmd_time_nanoseconds > 5e8:  # 0.5 seconds in nanoseconds
             self.vx = 0.0
             self.vtheta = 0.0  # Stop rotation to prevent drift
 
@@ -73,6 +108,30 @@ class PointSimulator(Node):
         odom_msg.twist.twist.angular.z = self.vtheta
 
         self.odom_pub.publish(odom_msg)
+
+        # GPS Simulation
+        if self.origin_lat is not None and self.origin_lon is not None:
+            current_time_seconds = current_time_nanos / 1e9
+            if current_time_seconds - self.last_gps_update_time_seconds >= 1:
+                self.last_gps_update_time_seconds = current_time_seconds
+                
+                error_magnitude = random.uniform(0, 1)
+                error_angle_radians = random.uniform(0, pi * 2)
+                
+                origin_gps_lat_meters, origin_gps_long_meters = lat_long_degrees_to_meters(self.origin_lat, self.origin_lon)
+
+                lat, long = lat_long_meters_to_degrees(
+                    origin_gps_lat_meters + self.x + error_magnitude * cos(error_angle_radians), 
+                    origin_gps_long_meters - self.y + error_magnitude * sin(error_angle_radians)
+                )
+                
+                gps_msg = NavSatFix()
+                gps_msg.header.stamp = self.get_clock().now().to_msg()
+                gps_msg.header.frame_id = "gps"
+                gps_msg.latitude = lat
+                gps_msg.longitude = long
+                
+                self.gps_pub.publish(gps_msg)
 
         # Publish Marker
         marker = Marker()

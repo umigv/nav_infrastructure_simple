@@ -2,6 +2,7 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 
+
 static constexpr double ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW = -0.60; // meters
 
 class OccupancyGridInflation : public rclcpp::Node {

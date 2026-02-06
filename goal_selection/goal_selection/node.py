@@ -13,13 +13,16 @@ from std_msgs.msg import Header
 from visualization_msgs.msg import Marker
 from rclpy.node import Node, Publisher
 from pyproj import Transformer
+from nav_utils.world_occupancy_grid import WorldOccupancyGrid, CellState
 
 def degrees_to_radians(degrees: float) -> float:
     """Convert degrees to radians."""
     return math.pi/180 * degrees
 
+GPS_ZONE = "EPSG:4326"
+FMCRB_METERS_ZONE = "EPSG:32617"
 
-def lat_long_to_meters(latitude: float, longitude: float) -> tuple[float, float]:
+def lat_long_degrees_to_meters(latitude: float, longitude: float) -> tuple[float, float]:
     """
     Convert latitude and longitude from degrees to meters.
     
@@ -28,10 +31,8 @@ def lat_long_to_meters(latitude: float, longitude: float) -> tuple[float, float]
     
     TODO: It's correctness should be validated.
     """
-    GPS_ZONE = "EPSG:4326"
-    FMCRB_METERS_ZONE = "EPSG:32617"
     transformer = Transformer.from_crs(GPS_ZONE, FMCRB_METERS_ZONE, always_xy=True)
-    return transformer.transform(longitude, latitude)
+    return transformer.transform(longitude, latitude)[::-1]
 
 @dataclass
 class GPSWaypoint:
@@ -56,6 +57,8 @@ class GoalSelectionNode(Node):
     waypoints: list[GPSWaypoint] = []
     # Index of waypoint that we are currently trying to travel to
     current_waypoint_index: int = 0
+    # GPS Coordinates for start of course
+    origin_waypoint: GPSWaypoint | None = None
 
     def __init__(self):
         """Initialize goal selection node."""
@@ -91,6 +94,13 @@ class GoalSelectionNode(Node):
         self.waypoint_marker_publisher = self.create_publisher(
             Marker,
             "/waypoint_marker",
+            10
+        )
+
+
+        self.gps_marker_publisher = self.create_publisher(
+            Marker,
+            "/gps_marker",
             10
         )
 
@@ -131,6 +141,28 @@ class GoalSelectionNode(Node):
 
         self.waypoint_marker_publisher.publish(waypoint_marker)
 
+    def publish_gps_marker(self, x: float, y: float):
+        gps_marker = Marker()
+
+        gps_marker.header.frame_id = 'odom'
+        gps_marker.header.stamp = self.get_clock().now().to_msg()
+        gps_marker.ns = 'goal_selection'
+        gps_marker.id = 0
+        gps_marker.type = Marker.SPHERE
+        gps_marker.action = Marker.ADD
+        gps_marker.pose.position.x = x
+        gps_marker.pose.position.y = y
+        gps_marker.pose.position.z = 0.0
+        gps_marker.scale.x = 0.4
+        gps_marker.scale.y = 0.4
+        gps_marker.scale.z = 0.4
+        gps_marker.color.a = 1.0
+        gps_marker.color.r = 0.0
+        gps_marker.color.g = 0.5
+        gps_marker.color.b = 0.5
+
+        self.gps_marker_publisher.publish(gps_marker)
+
     def gps_callback(self, new_gps_data: NavSatFix):
         """
         Consumes the latest GPS data to find the robot relative coordinates of the
@@ -139,18 +171,28 @@ class GoalSelectionNode(Node):
         TODO: Currently always choses the first waypoint in the list, but should choose
         the logically next waypoint.
         """
+        if self.origin_waypoint is None:
+            self.origin_waypoint = GPSWaypoint(latitude=new_gps_data.latitude, longitude=new_gps_data.longitude)
+
         if self.odometry is None or self.current_waypoint_index >= len(self.waypoints):
             self.waypoint_meters = None
             return
         
         current_waypoint = self.waypoints[self.current_waypoint_index]
 
-        current_waypoint_long_meters, current_waypoint_lat_meters = lat_long_to_meters(current_waypoint.latitude, current_waypoint.longitude)
-        new_long_meters, new_lat_meters = lat_long_to_meters(new_gps_data.latitude, new_gps_data.longitude)
+        origin_gps_lat_meters, origin_gps_long_meters = lat_long_degrees_to_meters(self.origin_waypoint.latitude, self.origin_waypoint.longitude)
+        current_gps_lat_meters, current_gps_long_meters = lat_long_degrees_to_meters(new_gps_data.latitude, new_gps_data.longitude)
+
+        current_waypoint_lat_meters, current_waypoint_long_meters = lat_long_degrees_to_meters(current_waypoint.latitude, current_waypoint.longitude)
+
+        x_from_gps = current_gps_lat_meters - origin_gps_lat_meters 
+        y_from_gps = -(current_gps_long_meters - origin_gps_long_meters)
+
+        self.publish_gps_marker(x_from_gps, y_from_gps)
 
         self.waypoint_meters = Point(
-            x=current_waypoint_lat_meters-new_lat_meters + self.odometry.pose.pose.position.x,
-            y=-(current_waypoint_long_meters-new_long_meters) + self.odometry.pose.pose.position.y
+            x=current_waypoint_lat_meters-origin_gps_lat_meters + (self.odometry.pose.pose.position.x - x_from_gps),
+            y=-(current_waypoint_long_meters-origin_gps_long_meters) + (self.odometry.pose.pose.position.y - y_from_gps)
         )
 
         self.publish_waypoint_marker()

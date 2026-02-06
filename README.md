@@ -9,13 +9,17 @@ When building, make sure you include `--symlink-install`. Otherwise, when contro
 colcon build --symlink-install
 ```
 
+### Dependencies
+This repo only has one dependecy: `pyproj`. You can install it with
+```bash
+pip install pyproj
+```
+
 ### Simulation
 You can run simulation by:
 1. Publishing occupancy grid
-2. Publishing odometry
-3. Publishing current gps coordinates
-4. Running this stack
-5. Running your simulation node
+2. Running this stack with simulation enabled
+3. Publishing initial gps coordinates
 
 The following describes how to run the point simulator (basic non-physics based simulator with an empty occupancy grid). Run each of these commands in separate terminals.
 
@@ -32,19 +36,15 @@ The following describes how to run the point simulator (basic non-physics based 
         orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
     data: [$(python3 -c 'print(", ".join(["0"]*100*100))')]"
     ```
-2. Run navigation stack
+2. Run navigation stack with simulation enabled:
     ```bash
-    ros2 launch nav_infrastructure_launch infra.launch.py
+    ros2 launch nav_infrastructure_launch infra.launch.py simulation:=true
     ```
-3. Run point simulator
-    ```bash
-    ros2 run point_simulator point_simulator
-    ```
-4. Publish current gps coords
+3. Publish initial gps coords
     ```bash
     ros2 topic pub /gps_coords sensor_msgs/msg/NavSatFix "{header: {frame_id: 'gps'}, status: {status: 0, service: 1}, latitude: 42.294377, longitude: -83.708555, altitude: 10.0, position_covariance: [0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0], position_covariance_type: 0}" --once
     ```
 
-Feel free to modify the current gps coords. 
+Feel free to modify the initial gps coords. 
 
 Keep in mind that full occupancy grid simulation is likely infeasible, since the occupancy grid needs to "turn" with the robot.
