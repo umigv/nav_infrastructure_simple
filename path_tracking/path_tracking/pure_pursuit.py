@@ -1,7 +1,6 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
-from rclpy.executors import MultiThreadedExecutor
 from geometry_msgs.msg import Twist, PoseStamped, Quaternion
 from nav_msgs.msg import Odometry, Path
 # import asyncio
@@ -9,7 +8,6 @@ import math
 import time
 import numpy as np
 from scipy.interpolate import splprep, splev
-import threading
 
 class PurePursuitNode(Node):
     def __init__(self) -> None:
@@ -54,8 +52,6 @@ class PurePursuitNode(Node):
 
         # threading.Thread(target=self.helper, daemon=True).start()
 
-        self.lock = threading.Lock()
-
     # def helper(self) -> None:
     #     asyncio.run(self.update_vals())
 
@@ -69,20 +65,11 @@ class PurePursuitNode(Node):
         # print(self.exec_percent)
 
     def path_callback(self, path_msg: Path) -> None:
-        if not self.lock.acquire(timeout=0.01): 
-            # if waiting for more than 10ms for lock, log it for debugging purposes
-            self.get_logger().info("Path callback waiting for lock")
-            self.lock.acquire()
-            self.get_logger().info("Path callback acquired the lock")
-        try:
-            # Smooth incoming path and reset state variables
-            self.get_logger().info('Received a new path from subscription.')
+        self.get_logger().info('Received a new path from subscription.')
 
-            self.smoothed_path_points = self.smooth_path_spline(path_msg)
-            self.reached_goal = False
-            self.visited = 0
-        finally:
-            self.lock.release()
+        self.smoothed_path_points = self.smooth_path_spline(path_msg)
+        self.reached_goal = False
+        self.visited = 0
 
     def smooth_path_spline(self, path: Path, smoothing: float = 0.1) -> list[(float, float)]:
         # Fit a B-spline to the waypoints in the path
@@ -184,50 +171,41 @@ class PurePursuitNode(Node):
         return None
     
     def control_loop(self) -> None:
-        if not self.lock.acquire(timeout=0.01): 
-            # if waiting for more than 10ms for lock, log it for debugging purposes
-            self.get_logger().info("Control loop waiting for lock")
-            self.lock.acquire()
-            self.get_logger().info("Control loop acquired the lock")
-        try:
-            # Calculate and publish the linear and angular velocity to drive toward the lookahead point
-            local_point = self.find_lookahead_point()
+        # Calculate and publish the linear and angular velocity to drive toward the lookahead point
+        local_point = self.find_lookahead_point()
 
-            # If no valid lookahead point found, stop (i.e., publish message with zero velocity)
-            if local_point is None:
-                self.cmd_pub.publish(Twist())
-                return
-        
-            local_x, local_y = local_point
-            curvature = 2 * local_y / (local_x ** 2 + local_y ** 2)
+        # If no valid lookahead point found, stop (i.e., publish message with zero velocity)
+        if local_point is None:
+            self.cmd_pub.publish(Twist())
+            return
+    
+        local_x, local_y = local_point
+        curvature = 2 * local_y / (local_x ** 2 + local_y ** 2)
 
-            # Scale up linear
-            raw_linear = self.lookahead_distance * self.speed_percent
-        
-            # More linear velocity on straights
-            '''
-            if abs(curvature) < 0.2:
-                raw_linear *= 1.5
-            '''
-            raw_angular = raw_linear * curvature
-        
-            # Scale both linear and angular if angular exceeds limit
-            # This keeps the proportions of pure pursuit
-            if abs(raw_angular) > self.max_angular_speed:
-                scale = self.max_angular_speed / abs(raw_angular)
-                linear = raw_linear * scale
-                angular = raw_angular * scale
-            else:
-                linear = raw_linear
-                angular = raw_angular
-        
-            cmd = Twist()
-            cmd.linear.x = linear
-            cmd.angular.z = angular
-            self.cmd_pub.publish(cmd)
-        
-        finally:
-            self.lock.release()
+        # Scale up linear
+        raw_linear = self.lookahead_distance * self.speed_percent
+    
+        # More linear velocity on straights
+        '''
+        if abs(curvature) < 0.2:
+            raw_linear *= 1.5
+        '''
+        raw_angular = raw_linear * curvature
+    
+        # Scale both linear and angular if angular exceeds limit
+        # This keeps the proportions of pure pursuit
+        if abs(raw_angular) > self.max_angular_speed:
+            scale = self.max_angular_speed / abs(raw_angular)
+            linear = raw_linear * scale
+            angular = raw_angular * scale
+        else:
+            linear = raw_linear
+            angular = raw_angular
+    
+        cmd = Twist()
+        cmd.linear.x = linear
+        cmd.angular.z = angular
+        self.cmd_pub.publish(cmd)
 
     def publish_path(self) -> None:
         # Create and publish a nav_msgs/msg/Path.msg using the smoothed path points
@@ -250,10 +228,7 @@ class PurePursuitNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = PurePursuitNode()
-
-    executor = MultiThreadedExecutor()
-    executor.add_node(node)
-    executor.spin()
+    rclpy.spin(node)
 
     node.destroy_node()
     rclpy.shutdown()
