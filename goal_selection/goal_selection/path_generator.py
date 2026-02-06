@@ -6,6 +6,8 @@ import math
 import sys
 from collections import deque
 import heapq
+
+import numpy
 from nav_msgs.msg import OccupancyGrid, Path
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
 from rclpy.node import Node
@@ -139,12 +141,56 @@ def index_cost(
         + (index_meters.y - waypoint_meters.y) ** 2
     )
 
+#once we get to testing: because we're adding, may need to make sure the values don't exceed 100. Will probably need to be toned down a lot to align with the rest of priority.
+def generate_zone_weighting(
+        grid: OccupancyGrid,
+        #keep all of the weighting values integers--if need to adjust for granularity, round up/down
+        quadratic_factor: float = .25,
+        linear_factor: float = 1,
+        linear_ratio:  float = .75,
+        top_bar_size: int = 30,
+        top_bar_weight: int = 15
+):
+    """Generates the weighting grid of an occupancy grid of a given size as a 2D Numpy Array. Will need to play with default weightings"""
+
+
+    #hopefully this doesn't cause pointer weirdness
+    width = grid.info.width
+    height = grid.info.height
+
+    zone_weight_grid = numpy.zeros((grid.info.height, grid.info.width))
+
+    x=0
+    while (x < height): 
+        y=0
+        while (y < width): 
+               #weight the bottom. this is weighted assuming the top is 0.
+                if (x >= (height * linear_ratio)):
+                    zone_weight_grid[x,y] += x *  linear_factor
+                #weight the top bar a little. this is weighted assuming the top is 0.
+                if (x < top_bar_size):
+                    zone_weight_grid[x,y] += top_bar_weight
+                #quadratic rating on the center
+                #change the weighting as needed
+                zone_weight_grid[x,y] += quadratic_factor * pow(abs(width/2 - y), 2)
+
+                #set this to max if it's greater
+
+                #I've just thought of something. Last year we used a matrix to store the costs. This year we're just using inflation grids.
+                y+=1
+        x+=1
+
+        
+
+    return zone_weight_grid
+
 def generate_path_occupancy_grid_indices(
     goal_selection_node: Node,
     occupancy_grid: OccupancyGrid,
     start_index: OccupancyGridIndex,
     robot_pose: Pose,
     waypoint_meters: Point,
+    zone_weights: numpy.ndarray
 ):
     """
     Generate a good path for the robot to follow towards the goal using the A* search
@@ -227,6 +273,13 @@ def generate_path_occupancy_grid_indices(
                     robot_pose=robot_pose,
                     waypoint_meters=waypoint_meters
                 )
+
+                # Add zone weighting to priority
+                heuristic += zone_weights[
+                    neighbor.x + int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution),
+                    -neighbor.y + occupancy_grid.info.width//2
+                ]
+
                 priority = new_cost + heuristic
                 heapq.heappush(priority_queue, IndexAndCost(cost=priority, index=neighbor))
 
@@ -255,6 +308,8 @@ def generate_path(
     start_point = find_closest_drivable_point(occupancy_grid)
     assert start_point is not None, "Could not find drivable area in front of robot!"
 
+    zone_weights = generate_zone_weighting(occupancy_grid)
+
     return Path(
         header=Header(
             frame_id="odom"
@@ -277,7 +332,8 @@ def generate_path(
                 occupancy_grid=occupancy_grid,
                 start_index=start_point,
                 robot_pose=robot_pose,
-                waypoint_meters=waypoint_meters
+                waypoint_meters=waypoint_meters,
+                zone_weights=zone_weights
             )
         ]
     )
