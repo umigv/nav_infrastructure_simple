@@ -153,28 +153,29 @@ def weight_grid(
 
 
     #hopefully this doesn't cause pointer weirdness
-    height, width = grid.shape 
+    width, height = grid.shape 
 
     #see if these need to be changed
     x = 0
-    while (x < width): 
+    while (x <= width/2): 
         y = 0
         while (y < height): 
                #weight the bottom. this is weighted assuming the top is 0.
-                if (y >= (height * linear_ratio)):
-                    grid[y,x] += y *  linear_factor
+                if (y < (height - (height* linear_ratio))):
+                    grid[x,y] += (y+1) *  linear_factor
                 #weight the top bar a little. this is weighted assuming the top is 0.
-                if (y < top_bar_size):
-                    grid[y,x] += top_bar_weight
+                if (y >= height - top_bar_size):
+                    grid[x,y] += top_bar_weight
                 #quadratic rating on the center
                 #change the weighting as needed
-                grid[y,x] += quadratic_factor * pow(abs(width/2 - x), 2)
+                grid[x,y] += quadratic_factor * pow(float(width/2) - float(x), 2)
 
                 #set this to max if it's greater
-                grid[y,x] = min(grid[y,x], 100)
+                grid[x,y] = min(grid[x,y], 100)
+                grid[width-1-x,y] = grid[x,y]
 
                 #I've just thought of something. Last year we used a matrix to store the costs. This year we're just using inflation grids.
                 y+=1
         x+=1
-    print(grid)
+
     return grid
