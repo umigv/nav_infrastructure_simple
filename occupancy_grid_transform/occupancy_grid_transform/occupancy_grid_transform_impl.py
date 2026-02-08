@@ -136,4 +136,45 @@ def compute_origin_pose(
             orientation=odom.orientation,
         )
     else:
-        return Pose(position=Point(x=local.x, y=local.y, z=0.0), orientation=Quaternion(w=1.0, x=0.0, y=0.0, z=0.0))
+        return Pose(
+            position = Point(x=local.x, y=local.y, z=0.0),
+            orientation = Quaternion(w=1.0, x=0.0, y=0.0, z=0.0)
+        )
+    
+def weight_grid(
+        grid: np.ndarray,
+        quadratic_factor: float = .25,
+        linear_factor: float = 1,
+        linear_ratio:  float = .75,
+        top_bar_size: int = 30,
+        top_bar_weight: int = 15
+    ) -> np.ndarray:
+    """Generates the weighting grid of an occupancy grid of a given size as a 2D Numpy Array. Will need to play with default weightings"""
+
+
+    #hopefully this doesn't cause pointer weirdness
+    height, width = grid.shape 
+
+    #see if these need to be changed
+    x = 0
+    while (x < width): 
+        y = 0
+        while (y < height): 
+               #weight the bottom. this is weighted assuming the top is 0.
+                if (y >= (height * linear_ratio)):
+                    grid[y,x] += y *  linear_factor
+                #weight the top bar a little. this is weighted assuming the top is 0.
+                if (y < top_bar_size):
+                    grid[y,x] += top_bar_weight
+                #quadratic rating on the center
+                #change the weighting as needed
+                grid[y,x] += quadratic_factor * pow(abs(width/2 - x), 2)
+
+                #set this to max if it's greater
+                grid[y,x] = min(grid[y,x], 100)
+
+                #I've just thought of something. Last year we used a matrix to store the costs. This year we're just using inflation grids.
+                y+=1
+        x+=1
+    print(grid)
+    return grid

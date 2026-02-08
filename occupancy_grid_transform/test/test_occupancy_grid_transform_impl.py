@@ -7,6 +7,7 @@ from occupancy_grid_transform.occupancy_grid_transform_impl import (
     compute_origin_pose,
     cv_occupancy_grid_to_ros_grid,
     inflate_grid,
+    weight_grid,
 )
 from occupancy_grid_transform.occupancy_grid_trasform_config import InflationParams
 
@@ -78,4 +79,16 @@ def test_compute_origin_pose():
 
     assert math.isclose(origin.position.x, 2.269615242270663)
     assert math.isclose(origin.position.y, 1.0009618943233418)
-    assert math.isclose(get_yaw_radians_from_quaternion(origin.orientation), math.pi / 6)
+    assert math.isclose(get_yaw_radians_from_quaternion(origin.orientation), math.pi/6)
+
+def test_weight_grid():
+
+    grid = np.zeros((7, 7), dtype=np.int8)
+
+    out = weight_grid(grid, 
+        .25,
+        1,
+        .75,
+        2,
+        15
+                       )

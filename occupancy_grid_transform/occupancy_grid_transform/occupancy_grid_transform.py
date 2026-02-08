@@ -5,7 +5,7 @@ from nav_msgs.msg import MapMetaData, OccupancyGrid, Odometry
 from rclpy.node import Node
 from std_msgs.msg import Header
 
-from .occupancy_grid_transform_impl import compute_origin_pose, cv_occupancy_grid_to_ros_grid, inflate_grid
+from .occupancy_grid_transform_impl import compute_origin_pose, cv_occupancy_grid_to_ros_grid, weight_grid, inflate_grid
 from .occupancy_grid_trasform_config import OccupancyGridTransformConfig
 
 
@@ -28,6 +28,7 @@ class OccupancyGridTransform(Node):
     def occupancy_grid_callback(self, msg: OccupancyGrid) -> None:
         grid = cv_occupancy_grid_to_ros_grid(msg)
         inflated_grid = inflate_grid(grid, self.config.inflation_params)
+        weighted_grid = weight_grid(inflated_grid)
         height, width = grid.shape
         origin = compute_origin_pose(
             odom=self._odom.pose.pose if self._odom is not None else None,
@@ -40,11 +41,11 @@ class OccupancyGridTransform(Node):
             OccupancyGrid(
                 header=Header(frame_id=self.config.grid_frame_id),
                 info=MapMetaData(resolution=msg.info.resolution, width=width, height=height, origin=origin),
-                data=inflated_grid.astype(np.int8).reshape(-1).tolist(),
+                data=weighted_grid.astype(np.int8).reshape(-1).tolist(),
             )
         )
 
-
+        
 def main() -> None:
     rclpy.init()
     node = OccupancyGridTransform()
