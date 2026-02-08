@@ -234,7 +234,7 @@ class GoalSelectionNode(Node):
 
         path = path_generator.generate_path(
             goal_selection_node=self,
-            occupancy_grid=self.inflated_occupancy_grid,
+            occupancy_grid=WorldOccupancyGrid(self.inflated_occupancy_grid, self.odometry.pose.pose),
             robot_pose=self.odometry.pose.pose,
             waypoint_meters=self.waypoint_meters
         )
