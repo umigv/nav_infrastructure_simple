@@ -60,7 +60,7 @@ class Planner(Node):
 This class provides a world-coordinate view of a discrete, robot-centric occupancy grid. 
 
 It allows planners to operate entirely on world `Point`s—querying occupancy, expanding neighbors, and hashing locations—without directly interacting with grid indices. Conceptually, the occupancy grid is treated as an infinite world representation:
-world points are projected into grid cells on demand, and any point outside the underlying grid bounds is treated as unknown
+world points are projected into grid cells on demand, and any point outside the underlying grid bounds is treated as unknown.
 
 #### Conventions / Transformations
 The supplied occupancy grid is assumed to have the following conventions (matching odom conventions):

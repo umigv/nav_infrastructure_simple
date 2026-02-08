@@ -4,6 +4,7 @@ import math
 from typing import Iterator
 from dataclasses import dataclass
 from nav_utils.geometry import get_yaw_radians_from_quaternion, rotate_by_yaw
+from typing import ClassVar
 
 @dataclass(frozen=True)
 class CellState:
@@ -12,9 +13,16 @@ class CellState:
     """
     value: int  # -1 (unknown) or 0–100 (probability occupied)
 
+    UNKNOWN_VALUE: ClassVar[int] = -1
+    DRIVABLE_THRESHOLD: ClassVar[int] = 30
+
     def __post_init__(self) -> None:
-        if not (-1 <= self.value <= 100):
-            raise ValueError("CellState value must be in range [-1, 100]")
+        if not (0 <= self.value <= 100 or self.value == CellState.UNKNOWN_VALUE):
+            raise ValueError("CellState value must be within [0, 100] or equal to CellState.UNKNOWN_VALUE")
+
+    @classmethod
+    def unknown_cell(cls) -> "CellState":
+        return cls(cls.UNKNOWN_VALUE)
 
     @property
     def drivable(self) -> bool:
@@ -28,7 +36,7 @@ class CellState:
         """
         True if the cell value is unknown
         """
-        return self.value == -1
+        return self.value == CellState.UNKNOWN_VALUE
 
 class WorldOccupancyGrid:
     """
@@ -81,7 +89,7 @@ class WorldOccupancyGrid:
         grid_x, grid_y = self._world_to_grid_index(point)
 
         if not(0 <= grid_x < self._occupancy_grid.info.width and 0 <= grid_y < self._occupancy_grid.info.height):
-            return  CellState(-1)
+            return CellState.unknown_cell()
 
         return CellState(self._occupancy_grid.data[grid_y * self._occupancy_grid.info.width + grid_x])
 
