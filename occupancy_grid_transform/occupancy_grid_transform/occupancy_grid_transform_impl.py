@@ -24,6 +24,22 @@ def cv_occupancy_grid_to_ros_grid(grid: OccupancyGrid) -> np.ndarray:
     - Height = number of cells in +y direction, width = number of cells in +x direction
     - Bottom left is origin
 
+
+    For example, after transform, with a 3 wide 2 tall grid:
+
+                   4 5 
+            R -->  2 3
+                   0 1
+
+        ^
+        |
+        y 
+          x-->
+
+    R is the robot position, and the numbers represent the index of each cell in the incoming grid data array.
+    The grid is indexed with (y, x) in 2d, and (y * width + x) in 1d.
+
+
     Args:
         grid: Incoming `nav_msgs/msg/OccupancyGrid`.
 

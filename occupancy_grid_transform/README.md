@@ -16,6 +16,22 @@ The occupancy grid transformed by the node has the standard ROS2 convention, whe
 - +x is forward, +y is left of the robot
 - info.origin is the bottom left corner of the occupancy grid
 
+For example, after transform, with a 3 wide 2 tall grid:
+
+```
+               4 5 
+        R -->  2 3
+               0 1
+
+^
+|
+y 
+  x-->
+```
+
+R is the robot position, and the numbers represent the index of each cell in the incoming grid data array.
+The grid is indexed with (y, x) in 2d, and (y * width + x) in 1d.
+
 ### Subscribed Topics
 - occupancy_grid (`nav_msgs/msg/OccupancyGrid`) - Input occupancy grid
 - odom (`nav_msgs/msg/Odometry`) - Robot odometry, used to orient and place the grid in the world frame
