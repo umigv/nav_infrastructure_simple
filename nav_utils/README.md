@@ -57,20 +57,17 @@ class Planner(Node):
 2D geometry helpers for ROS2 message types
 
 ### nav_utils.world_occupancy_grid
-World-facing wrapper around a robot-centric `nav_msgs/msg/OccupancyGrid`.
-
 This class provides a world-coordinate view of a discrete, robot-centric occupancy grid. 
 
 It allows planners to operate entirely on world `Point`s—querying occupancy, expanding neighbors, and hashing locations—without directly interacting with grid indices. Conceptually, the occupancy grid is treated as an infinite world representation:
 world points are projected into grid cells on demand, and any point outside the underlying grid bounds is treated as `UNKNOWN`.
 
 #### Conventions / Transformations
-This assumes that the occupancy grid is centered at the robot and begins `robot_forward_offset_m` meters in front of the robot. The input `OccupancyGrid.data` is interpreted as column-major, with index 0 corresponding to the top-left cell.
-
-Internally, the occupancy grid is transformed into a robot-aligned coordinate system with the following conventions (matching the odometry frame):
+The supplied occupancy grid is assumed to have the following conventions (matching odom conventions):
 - +x points forward from the robot
 - +y points to the left of the robot
 - the grid origin is the bottom-left corner of the grid
+- data is row major
 
 #### State
 State of the occupancy grid at some point can be queried using `state(point)`. The state is treated as `CellState.UNKNOWN` if `(grid_x, grid_y)` lies outside `[0..width) × [0..height)`.

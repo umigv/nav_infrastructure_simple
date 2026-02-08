@@ -1,6 +1,5 @@
 from nav_msgs.msg import OccupancyGrid
-from geometry_msgs.msg import Point, Pose
-import numpy as np
+from geometry_msgs.msg import Point
 import math
 from typing import Iterator
 from enum import IntEnum
@@ -13,7 +12,7 @@ class CellState(IntEnum):
     Values follow the ROS occupancy grid convention:
     - UNKNOWN  (-1): Cell occupancy is unknown or outside the grid bounds.
     - FREE      (0): Cell is known to be free and traversable.
-    - OCCUPIED (100): Cell is occupied by an obstacle.
+    - OCCUPIED (1): Cell is occupied by an obstacle.
 
     This enum provides a semantic layer over raw occupancy values and is used throughout planning code to reason about 
     traversability.
@@ -21,7 +20,26 @@ class CellState(IntEnum):
     
     UNKNOWN    = -1
     FREE       = 0
-    OCCUPIED   = 100
+    OCCUPIED   = 1
+
+    @staticmethod
+    def from_occupancy(value: int) -> "CellState":
+        """
+        Classify a raw ROS occupancy value into a CellState.
+
+        Returns:
+            UNKNOWN if value is -1, FREE if value is 0, OCCUPIED if value is between 1 and 100
+        """
+        if value == -1:
+            return CellState.UNKNOWN
+        
+        if value == 0:
+            return CellState.FREE
+        
+        if 1 <= value <= 100:
+            return CellState.OCCUPIED
+        
+        raise ValueError(f"Invalid occupancy value: {value} (expected -1, 0, or 1..100)")
 
     @property
     def drivable(self) -> bool:
@@ -35,66 +53,38 @@ class CellState(IntEnum):
 
 class WorldOccupancyGrid:
     """
-    World-facing view of a robot-centric occupancy grid.
+    Continuous world-facing view of an occupancy grid.
 
-    This class wraps a discrete, robot-centric `nav_msgs/msg/OccupancyGrid` and exposes it as a continuous 
-    world-coordinate representation. This abstraction allows discrete grid-based search (e.g. A*, BFS) to be expressed 
-    entirely in world coordinates, while preserving correct grid semantics.
+    This class wraps a discrete `nav_msgs/msg/OccupancyGrid` and exposes it as a continuous world-coordinate 
+    representation. This abstraction allows discrete grid-based search (e.g. A*, BFS) to be expressed entirely in world 
+    coordinates, while preserving correct grid semantics.
 
     Conceptually, the occupancy grid is treated as an infinite world:
     - World points are projected into grid cells on demand.
     - Points outside the underlying grid bounds are treated as UNKNOWN.
 
-    The grid is internally rotated and reshaped to align with the odometry frame:
-    - +X points forward from the robot.
-    - +Y points to the left of the robot.
-    - The grid origin corresponds to the bottom-left corner of the grid.
-    - The grid begins `robot_forward_offset_m` meters in front of the robot.
-
     Attributes:
-        _pose: Robot pose in the world frame (e.g. odom/map) at capture time.
+        _occupancy_grid: The occupancy grid.
         _yaw: Cached yaw (radians about +Z) extracted from `_pose.orientation`.
-        _grid: 2D occupancy matrix indexed as `_grid[grid_x, grid_y]` containing raw values
-            (-1 unknown, 0 free, 100 occupied), rotated/reshaped to match the conventions above.
-        _width: Number of cells in +X (forward) direction.
-        _height: Number of cells in +Y (left) direction.
-        _resolution: Cell size in meters.
-        _robot_forward_offset_m: Forward offset (m) from robot origin to grid x=0 column.
-        _half_height: Half of grid height in meters (used to center the grid in +Y).
     """
 
-    _pose: Pose
+    _occupancy_grid: OccupancyGrid
     _yaw: float
-    _grid: np.ndarray
-    _width: int
-    _height: int
-    _resolution: float
-    _robot_forward_offset_m: float
-    _half_height: float
 
-    def __init__(self, grid: OccupancyGrid, pose: Pose, robot_forward_offset_m: float) -> None:
+    def __init__(self, grid: OccupancyGrid) -> None:
         """
-        Construct a world-facing view of a robot-centric occupancy grid.
+        Construct a world-facing view of a discrete occupancy grid.
 
-        The occupancy grid is assumed to be centered about the robot in +Y and begins robot_forward_offset_m meters in 
-        front of the robot in +X. `grid.data` is interpreted as column-major, with index 0 as the top-left cell.
+        The occupancy grid is assumed to be in ROS2 conventions, where
+        - +x is forward
+        - +y is left
+        - data is stored in row major order
 
         Args:
-            grid: Robot-centric occupancy grid message. 
-            pose: Robot pose in the world frame at the time the grid was captured.
-            robot_forward_offset_m: Forward offset (meters) from the robot origin to the grid's x=0 column.
+            grid: Occupancy grid message. 
         """
-        self._pose = pose
-        self._yaw = get_yaw_radians_from_quaternion(self._pose.orientation)
-
-        matrix = np.asarray(grid.data, dtype=np.int8).reshape((grid.info.width, grid.info.height), order='F')
-        matrix = np.rot90(matrix, k=-1)
-        self._grid = matrix
-        self._width, self._height = matrix.shape
-        self._resolution = grid.info.resolution
-
-        self._robot_forward_offset_m = robot_forward_offset_m
-        self._half_height = self._height * self._resolution / 2.0
+        self._occupancy_grid = grid
+        self._yaw = get_yaw_radians_from_quaternion(self._occupancy_grid.info.origin.orientation)
 
     def state(self, point: Point) -> CellState:
         """
@@ -111,10 +101,10 @@ class WorldOccupancyGrid:
         """
         grid_x, grid_y = self._world_to_grid_index(point)
 
-        if not(0 <= grid_x < self._width and 0 <= grid_y < self._height):
+        if not(0 <= grid_x < self._occupancy_grid.info.width and 0 <= grid_y < self._occupancy_grid.info.height):
             return CellState.UNKNOWN
 
-        return CellState(int(self._grid[grid_x, grid_y]))
+        return CellState.from_occupancy(self._occupancy_grid.data[grid_y * self._occupancy_grid.info.width + grid_x])
 
     def neighbors4(self, point: Point) -> Iterator[Point]:
         """
@@ -207,28 +197,18 @@ class WorldOccupancyGrid:
         """
         Project a world-coordinate point into discrete grid indices.
 
-        The transformation:
-        1. Translates the point into the robot frame
-        2. Rotates by -robot yaw to align with the grid
-        3. Applies the forward offset and vertical centering
-        4. Quantizes into grid indices using the grid resolution
-
         Args:
             world: World-coordinate point.
 
         Returns:
-            (grid_x, grid_y) integer indices corresponding to the grid cell
-            containing the point.
+            (grid_x, grid_y) integer indices corresponding to the grid cell containing the point.
         """
-        robot = rotate_by_yaw(Point(x = world.x - self._pose.position.x,
-                            y = world.y - self._pose.position.y, 
-                            z = 0.0), -self._yaw)
+        grid = rotate_by_yaw(Point(x = world.x - self._occupancy_grid.info.origin.position.x,
+                                   y = world.y - self._occupancy_grid.info.origin.position.y, 
+                                   z = 0.0), -self._yaw)
         
-        grid = Point(x = robot.x - self._robot_forward_offset_m, 
-                     y = robot.y + self._half_height, 
-                     z = 0.0)
-        
-        return math.floor(grid.x / self._resolution), math.floor(grid.y / self._resolution)
+        return math.floor(grid.x / self._occupancy_grid.info.resolution), \
+               math.floor(grid.y / self._occupancy_grid.info.resolution)
 
     def _grid_index_center_to_world(self, grid_x: int, grid_y: int) -> Point:
         """
@@ -244,16 +224,12 @@ class WorldOccupancyGrid:
         Returns:
             World-coordinate point at the center of the specified grid cell.
         """
-        grid = Point(x = (grid_x + 0.5) * self._resolution, 
-                     y = (grid_y + 0.5) * self._resolution, 
+        grid = Point(x = (grid_x + 0.5) * self._occupancy_grid.info.resolution, 
+                     y = (grid_y + 0.5) * self._occupancy_grid.info.resolution, 
                      z = 0.0) 
-        
-        robot = Point(x = grid.x + self._robot_forward_offset_m,
-                      y = grid.y - self._half_height,
-                      z = 0.0)
 
-        robot_rotated = rotate_by_yaw(robot, self._yaw)
+        rotated = rotate_by_yaw(grid, self._yaw)
 
-        return Point(x = robot_rotated.x + self._pose.position.x, 
-                    y = robot_rotated.y + self._pose.position.y, 
-                    z = 0.0)
+        return Point(x = rotated.x + self._occupancy_grid.info.origin.position.x, 
+                     y = rotated.y + self._occupancy_grid.info.origin.position.y, 
+                     z = 0.0)
