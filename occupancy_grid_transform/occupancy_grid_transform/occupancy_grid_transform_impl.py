@@ -27,9 +27,18 @@ def cv_occupancy_grid_to_ros_grid(grid: OccupancyGrid) -> np.ndarray:
 
     For example, after transform, with a 3 wide 2 tall grid:
 
-                   4 5 
-            R -->  2 3
-                   0 1
+        1d indexing by (y * width + x):
+
+               4 5 
+        R -->  2 3
+               0 1
+
+
+        2d indexing by (y, x):
+
+              (2, 0) (2, 1)
+        R --> (1, 0) (1, 1)
+              (0, 0) (0, 1)
 
         ^
         |

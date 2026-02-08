@@ -19,9 +19,18 @@ The occupancy grid transformed by the node has the standard ROS2 convention, whe
 For example, after transform, with a 3 wide 2 tall grid:
 
 ```
+        1d indexing by (y * width + x):
+
                4 5 
         R -->  2 3
                0 1
+
+
+        2d indexing by (y, x):
+
+              (2, 0) (2, 1)
+        R --> (1, 0) (1, 1)
+              (0, 0) (0, 1)
 
 ^
 |
