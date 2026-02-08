@@ -1,11 +1,8 @@
 import rclpy
 from rclpy.node import Node
-from rclpy.callback_groups import ReentrantCallbackGroup
 from geometry_msgs.msg import Twist, PoseStamped, Quaternion
 from nav_msgs.msg import Odometry, Path
-# import asyncio
 import math
-import time
 import numpy as np
 from scipy.interpolate import splprep, splev
 
@@ -15,65 +12,34 @@ class PurePursuitNode(Node):
         self.get_logger().info('Pure Pursuit Node started.')
 
         # Parameters
-        # self.max_linear_speed = 0.6
         self.max_angular_speed: float = 0.6
         self.base_lookahead: float = 0.1 # base lookahead distance
         self.k_speed: float = 0.55 # scaling factor for current speed when calculating lookahead distance
-        self.visited: int = 0 # index of last visited/processed point in path when finding lookahead point
-        # self.speed_factor: float = 1
+        self.speed_percent: float = 2.0 # for scaling linear velocity
 
         # State
         self.smoothed_path_points: list[(float, float)] = [] # x, y
         self.pose: tuple[float, float, float] | None = None # x, y, yaw
+        self.visited: int = 0 # index of last visited/processed point in path when finding lookahead point
         self.reached_goal: bool = False
         self.current_speed: float = 0.0
 
-        self.cb_group: ReentrantCallbackGroup = ReentrantCallbackGroup()
-        self.create_subscription(Odometry, '/odom', self.odom_callback, 10, callback_group=self.cb_group)
-        self.cmd_pub: rclpy.Publisher = self.create_publisher(Twist, '/joy_cmd_vel', 10) # for running on the robot
-        # self.cmd_pub: rclpy.Publisher = self.create_publisher(Twist, '/cmd_vel', 10) # for nav_visualization
+        self.odom_sub: rclpy.Subscription = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        self.path_sub: rclpy.Subscription = self.create_subscription(Path, '/path', self.path_callback, 10)
+        self.cmd_pub: rclpy.Publisher = self.create_publisher(Twist, '/joy_cmd_vel', 10)
         self.path_pub: rclpy.Publisher = self.create_publisher(Path, '/smoothed_path', 10)
 
-        self.subscription: rclpy.Subscription = self.create_subscription(
-            Path,
-            '/path',
-            self.path_callback,
-            10,
-            callback_group=self.cb_group
-        )
-
-        self.speed_percent: float = 2.0
-        # self.exec_percent: float = 0.6
-
-        # asyncio.create_task(self.update_vals())
-
-        self.create_timer(0.1, self.control_loop, callback_group=self.cb_group)
-        self.create_timer(0.1, self.publish_path, callback_group=self.cb_group)
-
-        # threading.Thread(target=self.helper, daemon=True).start()
-
-    # def helper(self) -> None:
-    #     asyncio.run(self.update_vals())
-
-    # async def update_vals(self) -> None:
-    #     await asyncio.sleep(1)
-
-        self.speed_percent = 2
-        # self.exec_percent = 0.6
-        print("change vals to")
-        print(self.speed_percent)
-        # print(self.exec_percent)
+        self.create_timer(0.1, self.control_loop)
+        self.create_timer(0.1, self.publish_path)
 
     def path_callback(self, path_msg: Path) -> None:
         self.get_logger().info('Received a new path from subscription.')
-
         self.smoothed_path_points = self.smooth_path_spline(path_msg)
         self.reached_goal = False
         self.visited = 0
 
     def smooth_path_spline(self, path: Path, smoothing: float = 0.1) -> list[(float, float)]:
         # Fit a B-spline to the waypoints in the path
-
         # Need at least 4 points to fit a spline, return the original path if < 4 points
         if len(path.poses) <= 3:
             return [(pose_stamped.pose.position.x, pose_stamped.pose.position.y) for pose_stamped in path.poses]
@@ -186,10 +152,6 @@ class PurePursuitNode(Node):
         raw_linear = self.lookahead_distance * self.speed_percent
     
         # More linear velocity on straights
-        '''
-        if abs(curvature) < 0.2:
-            raw_linear *= 1.5
-        '''
         raw_angular = raw_linear * curvature
     
         # Scale both linear and angular if angular exceeds limit
