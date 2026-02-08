@@ -41,8 +41,8 @@ def test_world_to_grid_index():
         robot_forward_offset_m=0.6
     )
 
-    assert grid.world_to_grid_index(Point(x=3.25, y=3.5, z=0.0)) == (4, 3)
-    assert grid.world_to_grid_index(Point(x=2.0, y=1.0, z=0.0)) == (-1, 0)
+    assert grid._world_to_grid_index(Point(x=3.25, y=3.5, z=0.0)) == (4, 3)
+    assert grid._world_to_grid_index(Point(x=2.0, y=1.0, z=0.0)) == (-1, 0)
 
 def test_grid_index_center_to_world():
     grid = WorldOccupancyGrid(
@@ -51,8 +51,8 @@ def test_grid_index_center_to_world():
         robot_forward_offset_m=0.6
     )
 
-    assert point_is_close(grid.grid_index_center_to_world(2, 0), Point(x=3.2271, y=1.8425, z=0.0))
-    assert point_is_close(grid.grid_index_center_to_world(2, -1), Point(x=3.4771, y=1.4095, z=0.0))
+    assert point_is_close(grid._grid_index_center_to_world(2, 0), Point(x=3.2271, y=1.8425, z=0.0))
+    assert point_is_close(grid._grid_index_center_to_world(2, -1), Point(x=3.4771, y=1.4095, z=0.0))
 
 def test_state():
     matrix = np.zeros((6, 6), dtype=np.int8)
@@ -76,15 +76,15 @@ def test_neighbors():
     )
 
     point = Point(x=3.25, y=3.5, z=0.0)
-    assert grid.world_to_grid_index(point) == (4, 3)
+    assert grid._world_to_grid_index(point) == (4, 3)
 
     neighbors4 = list(grid.neighbors4(point))
     assert len(neighbors4) == 4
-    assert {grid.world_to_grid_index(q) for q in neighbors4} == {(5, 3), (4, 4), (4, 2), (3, 3)}
+    assert {grid._world_to_grid_index(q) for q in neighbors4} == {(5, 3), (4, 4), (4, 2), (3, 3)}
 
     neighbors8 = list(grid.neighbors8(point))
     assert len(neighbors8) == 8
-    assert {grid.world_to_grid_index(q) for q in neighbors8} == {
+    assert {grid._world_to_grid_index(q) for q in neighbors8} == {
         (3, 2), (4, 2), (5, 2),
         (3, 3),         (5, 3),
         (3, 4), (4, 4), (5, 4),
@@ -92,7 +92,7 @@ def test_neighbors():
 
     neighbors_forward = list(grid.neighbors_forward(point))
     assert len(neighbors_forward) == 5
-    assert [grid.world_to_grid_index(q) for q in neighbors_forward] == [
+    assert [grid._world_to_grid_index(q) for q in neighbors_forward] == [
         (5, 3),  # forward
         (5, 4),  # forward-left
         (5, 2),  # forward-right
@@ -123,8 +123,8 @@ def test_hash_key_unique_indices():
 
     keys = []
     for ix, iy in indices:
-        world = grid.grid_index_center_to_world(ix, iy)
-        assert grid.world_to_grid_index(world) == (ix, iy)
+        world = grid._grid_index_center_to_world(ix, iy)
+        assert grid._world_to_grid_index(world) == (ix, iy)
         keys.append(grid.hash_key(world))
 
     assert len(set(keys)) == len(keys)
