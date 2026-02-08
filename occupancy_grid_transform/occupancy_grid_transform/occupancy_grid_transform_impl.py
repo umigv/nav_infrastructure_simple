@@ -162,7 +162,7 @@ def weight_grid(
         while (y < height): 
                #weight the bottom. this is weighted assuming the top is 0.
                 if (y < (height - (height* linear_ratio))):
-                    grid[x,y] += (y+1) *  linear_factor
+                    grid[x,y] += (height*linear_ratio-(y+1)) *  linear_factor
                 #weight the top bar a little. this is weighted assuming the top is 0.
                 if (y >= height - top_bar_size):
                     grid[x,y] += top_bar_weight
