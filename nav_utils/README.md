@@ -62,7 +62,7 @@ World-facing wrapper around a robot-centric `nav_msgs/msg/OccupancyGrid`.
 This class provides a world-coordinate view of a discrete, robot-centric occupancy grid. 
 
 It allows planners to operate entirely on world `Point`s—querying occupancy, expanding neighbors, and hashing locations—without directly interacting with grid indices. Conceptually, the occupancy grid is treated as an infinite world representation:
-world points are projected into grid cells on demand, and any point outside the underlying grid bounds is treated as `UNKNOWN`.
+world points are projected into grid cells on demand, and any point outside the underlying grid bounds is treated as unknown
 
 #### Conventions / Transformations
 This assumes that the occupancy grid is centered at the robot and begins `robot_forward_offset_m` meters in front of the robot. The input `OccupancyGrid.data` is interpreted as column-major, with index 0 corresponding to the top-left cell.
@@ -73,7 +73,7 @@ Internally, the occupancy grid is transformed into a robot-aligned coordinate sy
 - the grid origin is the bottom-left corner of the grid
 
 #### State
-State of the occupancy grid at some point can be queried using `state(point)`. The state is treated as `CellState.UNKNOWN` if `(grid_x, grid_y)` lies outside `[0..width) × [0..height)`.
+State of the occupancy grid at some point can be queried using `state(point)`. `state.unknown` is true if `(grid_x, grid_y)` lies outside `[0..width) × [0..height)`.
 
 #### Discrete “search” in continuous space via neighbors
 Although planner code operates on continuous world `Point`s, discrete graph search can still be performed using `neighbors4(point)`, `neighbors8(point)`, or `neighbors_forward(point)`.

@@ -56,7 +56,7 @@ def test_grid_index_center_to_world():
 
 def test_state():
     matrix = np.zeros((6, 6), dtype=np.int8)
-    matrix[4, 3] = CellState.OCCUPIED
+    matrix[4, 3] = 100
     
     grid = WorldOccupancyGrid(
         grid=make_grid_from_target_matrix(matrix, resolution=0.5), 
@@ -64,9 +64,9 @@ def test_state():
         robot_forward_offset_m=0.6
     )
 
-    assert grid.state(Point(x=2.5, y=2.0, z=0.0)) == CellState.FREE
-    assert grid.state(Point(x=3.25, y=3.5, z=0.0)) == CellState.OCCUPIED
-    assert grid.state(Point(x=2.0, y=1.0, z=0.0)) == CellState.UNKNOWN
+    assert grid.state(Point(x=2.5, y=2.0, z=0.0)).drivable
+    assert not grid.state(Point(x=3.25, y=3.5, z=0.0)).drivable
+    assert grid.state(Point(x=2.0, y=1.0, z=0.0)).unknown
 
 def test_neighbors():
     grid = WorldOccupancyGrid(

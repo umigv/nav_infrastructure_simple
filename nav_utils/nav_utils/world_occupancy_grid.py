@@ -3,35 +3,33 @@ from geometry_msgs.msg import Point, Pose
 import numpy as np
 import math
 from typing import Iterator
-from enum import IntEnum
+from dataclasses import dataclass
 from nav_utils.geometry import get_yaw_radians_from_quaternion, rotate_by_yaw
 
-class CellState(IntEnum):
+@dataclass(frozen=True)
+class CellState:
     """
     Discrete occupancy state of a grid cell.
-
-    Values follow the ROS occupancy grid convention:
-    - UNKNOWN  (-1): Cell occupancy is unknown or outside the grid bounds.
-    - FREE      (0): Cell is known to be free and traversable.
-    - OCCUPIED (100): Cell is occupied by an obstacle.
-
-    This enum provides a semantic layer over raw occupancy values and is used throughout planning code to reason about 
-    traversability.
     """
-    
-    UNKNOWN    = -1
-    FREE       = 0
-    OCCUPIED   = 100
+    value: int  # -1 (unknown) or 0–100 (probability occupied)
+
+    def __post_init__(self) -> None:
+        if not (-1 <= self.value <= 100):
+            raise ValueError("CellState value must be in range [-1, 100]")
 
     @property
     def drivable(self) -> bool:
         """
-        Whether this cell can be traversed by the robot.
-
-        Returns: 
-            True if the cell state is FREE. UNKNOWN and OCCUPIED grids are treated as non-drivable.
+        True if the cell can be traversed by the robot
         """
-        return self == CellState.FREE
+        return 0 <= self.value <= 30
+
+    @property
+    def unknown(self) -> bool:
+        """
+        True if the cell value is unknown
+        """
+        return self.value == -1
 
 class WorldOccupancyGrid:
     """
@@ -112,9 +110,9 @@ class WorldOccupancyGrid:
         grid_x, grid_y = self._world_to_grid_index(point)
 
         if not(0 <= grid_x < self._width and 0 <= grid_y < self._height):
-            return CellState.UNKNOWN
+            return  CellState(-1)
 
-        return CellState(int(self._grid[grid_x, grid_y]))
+        return CellState(self._grid[grid_x, grid_y])
 
     def neighbors4(self, point: Point) -> Iterator[Point]:
         """
