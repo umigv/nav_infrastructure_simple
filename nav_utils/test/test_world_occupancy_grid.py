@@ -34,13 +34,13 @@ def test_grid_index_center_to_world():
 
 def test_state():
     occupancy_grid = make_occupancy_grid()
-    occupancy_grid.data[22] = CellState.OCCUPIED
+    occupancy_grid.data[22] = 100
     
     grid = WorldOccupancyGrid(occupancy_grid)
 
-    assert grid.state(Point(x=2.5, y=2.0, z=0.0)) == CellState.FREE
-    assert grid.state(Point(x=3.25, y=3.5, z=0.0)) == CellState.OCCUPIED
-    assert grid.state(Point(x=2.0, y=1.0, z=0.0)) == CellState.UNKNOWN
+    assert grid.state(Point(x=2.5, y=2.0, z=0.0)).drivable
+    assert not grid.state(Point(x=3.25, y=3.5, z=0.0)).drivable
+    assert grid.state(Point(x=2.0, y=1.0, z=0.0)).unknown
 
 def test_neighbors():
     grid = WorldOccupancyGrid(make_occupancy_grid())

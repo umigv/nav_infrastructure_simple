@@ -2,54 +2,41 @@ from nav_msgs.msg import OccupancyGrid
 from geometry_msgs.msg import Point
 import math
 from typing import Iterator
-from enum import IntEnum
+from dataclasses import dataclass
 from nav_utils.geometry import get_yaw_radians_from_quaternion, rotate_by_yaw
+from typing import ClassVar
 
-class CellState(IntEnum):
+@dataclass(frozen=True)
+class CellState:
     """
     Discrete occupancy state of a grid cell.
-
-    Values follow the ROS occupancy grid convention:
-    - UNKNOWN  (-1): Cell occupancy is unknown or outside the grid bounds.
-    - FREE      (0): Cell is known to be free and traversable.
-    - OCCUPIED (1): Cell is occupied by an obstacle.
-
-    This enum provides a semantic layer over raw occupancy values and is used throughout planning code to reason about 
-    traversability.
     """
-    
-    UNKNOWN    = -1
-    FREE       = 0
-    OCCUPIED   = 1
+    value: int  # -1 (unknown) or 0–100 (probability occupied)
 
-    @staticmethod
-    def from_occupancy(value: int) -> "CellState":
-        """
-        Classify a raw ROS occupancy value into a CellState.
+    UNKNOWN_VALUE: ClassVar[int] = -1
+    DRIVABLE_THRESHOLD: ClassVar[int] = 30
 
-        Returns:
-            UNKNOWN if value is -1, FREE if value is 0, OCCUPIED if value is between 1 and 100
-        """
-        if value == -1:
-            return CellState.UNKNOWN
-        
-        if value == 0:
-            return CellState.FREE
-        
-        if 1 <= value <= 100:
-            return CellState.OCCUPIED
-        
-        raise ValueError(f"Invalid occupancy value: {value} (expected -1, 0, or 1..100)")
+    def __post_init__(self) -> None:
+        if not (0 <= self.value <= 100 or self.value == CellState.UNKNOWN_VALUE):
+            raise ValueError("CellState value must be within [0, 100] or equal to CellState.UNKNOWN_VALUE")
+
+    @classmethod
+    def unknown_cell(cls) -> "CellState":
+        return cls(cls.UNKNOWN_VALUE)
 
     @property
     def drivable(self) -> bool:
         """
-        Whether this cell can be traversed by the robot.
-
-        Returns: 
-            True if the cell state is FREE. UNKNOWN and OCCUPIED grids are treated as non-drivable.
+        True if the cell can be traversed by the robot
         """
-        return self == CellState.FREE
+        return 0 <= self.value <= 30
+
+    @property
+    def unknown(self) -> bool:
+        """
+        True if the cell value is unknown
+        """
+        return self.value == CellState.UNKNOWN_VALUE
 
 class WorldOccupancyGrid:
     """
@@ -102,9 +89,9 @@ class WorldOccupancyGrid:
         grid_x, grid_y = self._world_to_grid_index(point)
 
         if not(0 <= grid_x < self._occupancy_grid.info.width and 0 <= grid_y < self._occupancy_grid.info.height):
-            return CellState.UNKNOWN
+            return CellState.unknown_cell()
 
-        return CellState.from_occupancy(self._occupancy_grid.data[grid_y * self._occupancy_grid.info.width + grid_x])
+        return CellState(self._occupancy_grid.data[grid_y * self._occupancy_grid.info.width + grid_x])
 
     def neighbors4(self, point: Point) -> Iterator[Point]:
         """
