@@ -4,8 +4,12 @@ twist_mux_node:
       teleop:
         topic: teleop_cmd_vel
         timeout: 0.5
-        priority: 100
+        priority: 3
+      recovery:
+        topic: recovery_cmd_vel
+        timeout: 0.5
+        priority: 2
       nav:
         topic: nav_cmd_vel
         timeout: 0.5
-        priority: 10
+        priority: 1
