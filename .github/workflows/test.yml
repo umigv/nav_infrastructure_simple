@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ros-tests:
+    runs-on: ubuntu-22.04
+    env:
+      ROS_DISTRO: humble
+
+    steps:
+      - name: Checkout (into ws/src/nav_infrastructure_simple)
+        uses: actions/checkout@v4
+        with:
+          path: ws/src/nav_infrastructure_simple
+
+      - name: Set up ROS
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: ${{ env.ROS_DISTRO }}
+
+      - name: rosdep init/update
+        run: |
+          sudo rosdep init 2>/dev/null || true
+          rosdep update
+
+      - name: Setup deps (repo-scoped rosdep + tooling)
+        working-directory: ws/src/nav_infrastructure_simple
+        run: |
+          bash scripts/setup.sh
+
+      - name: Build (repo packages)
+        working-directory: ws/src/nav_infrastructure_simple
+        run: |
+          bash scripts/build.sh
+
+      - name: Test (repo packages)
+        working-directory: ws/src/nav_infrastructure_simple
+        run: |
+          bash scripts/test.sh
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: colcon-logs
+          path: ws/log
