@@ -1,37 +1,41 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
 
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import (
-    QoSProfile,
     QoSDurabilityPolicy,
-    QoSReliabilityPolicy,
     QoSHistoryPolicy,
+    QoSProfile,
+    QoSReliabilityPolicy,
 )
-
 from std_msgs.msg import String
 from std_srvs.srv import SetBool
+
 
 class State(str, Enum):
     NORMAL = "normal"
     RAMP = "ramp"
     RECOVERY = "recovery"
 
+
 class StateMachine(Node):
     def __init__(self) -> None:
         super().__init__("state_machine")
 
-        self.publisher = self.create_publisher(String, "state", QoSProfile(
-            history=QoSHistoryPolicy.KEEP_LAST,
-            depth=1,
-            reliability=QoSReliabilityPolicy.RELIABLE,
-            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
-        ))
+        self.publisher = self.create_publisher(
+            String,
+            "state",
+            QoSProfile(
+                history=QoSHistoryPolicy.KEEP_LAST,
+                depth=1,
+                reliability=QoSReliabilityPolicy.RELIABLE,
+                durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            ),
+        )
 
-        self.last_state: Optional[State] = None
+        self.last_state: State | None = None
 
         self.set_ramp_service = self.create_service(SetBool, "state/set_ramp", self.set_ramp_callback)
         self.ramp_enabled = False
@@ -44,20 +48,20 @@ class StateMachine(Node):
     def compute_state(self) -> State:
         if self.recovery_enabled:
             return State.RECOVERY
-        
+
         if self.ramp_enabled:
             return State.RAMP
-        
+
         return State.NORMAL
 
     def publish_state_if_changed(self, reason: str):
         state = self.compute_state()
         if state == self.last_state:
             return
-        
+
         last_state_str = self.last_state.value if self.last_state is not None else "<none>"
         self.get_logger().info(f"Changed state from {last_state_str} to {state.value}, reason={reason}")
-        
+
         self.last_state = state
         self.publisher.publish(String(data=state.value))
 
@@ -66,7 +70,7 @@ class StateMachine(Node):
             res.message = f"Recovery already {'enabled' if req.data else 'disabled'}."
         else:
             res.message = f"Recovery {'enabled' if req.data else 'disabled'}."
-        
+
         self.recovery_enabled = req.data
         res.success = True
         self.get_logger().info(res.message + f" (ramp_enabled={self.ramp_enabled})")
@@ -78,12 +82,13 @@ class StateMachine(Node):
             res.message = f"Ramp already {'enabled' if req.data else 'disabled'}."
         else:
             res.message = f"Ramp {'enabled' if req.data else 'disabled'}."
-        
+
         self.ramp_enabled = req.data
         res.success = True
         self.get_logger().info(res.message + f" (recovery_enabled={self.recovery_enabled})")
         self.publish_state_if_changed(reason="state/set_ramp")
         return res
+
 
 def main() -> None:
     rclpy.init()

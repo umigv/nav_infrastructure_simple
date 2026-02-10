@@ -1,17 +1,19 @@
+import random
+import time
+from math import cos, pi, sin
+
 import rclpy
-from rclpy.node import Node
-from geometry_msgs.msg import Twist, TransformStamped
+from geometry_msgs.msg import TransformStamped, Twist
 from nav_msgs.msg import Odometry
-from visualization_msgs.msg import Marker
+from pyproj import Transformer
+from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix
 from tf2_ros import TransformBroadcaster
-from math import sin, cos, atan2, pi
-import time
-import random
-from pyproj import Transformer
+from visualization_msgs.msg import Marker
 
 GPS_ZONE = "EPSG:4326"
 FMCRB_METERS_ZONE = "EPSG:32617"
+
 
 def lat_long_degrees_to_meters(latitude: float, longitude: float) -> tuple[float, float]:
     """
@@ -20,6 +22,7 @@ def lat_long_degrees_to_meters(latitude: float, longitude: float) -> tuple[float
     transformer = Transformer.from_crs(GPS_ZONE, FMCRB_METERS_ZONE, always_xy=True)
     return transformer.transform(longitude, latitude)[::-1]
 
+
 def lat_long_meters_to_degrees(x: float, y: float) -> tuple[float, float]:
     """
     Convert latitude and longitude from degrees to meters.
@@ -27,18 +30,19 @@ def lat_long_meters_to_degrees(x: float, y: float) -> tuple[float, float]:
     transformer = Transformer.from_crs(FMCRB_METERS_ZONE, GPS_ZONE, always_xy=True)
     return transformer.transform(y, x)[::-1]
 
+
 class PointSimulator(Node):
     def __init__(self):
-        super().__init__('point_simulator')
-        self.sub = self.create_subscription(Twist, '/joy_cmd_vel', self.cmd_vel_callback, 10)
-        self.odom_pub = self.create_publisher(Odometry, '/odom', 10)
-        self.marker_pub = self.create_publisher(Marker, '/visualization_marker', 10)
-        self.gps_pub = self.create_publisher(NavSatFix, '/gps_coords', 10)
-        
+        super().__init__("point_simulator")
+        self.sub = self.create_subscription(Twist, "/joy_cmd_vel", self.cmd_vel_callback, 10)
+        self.odom_pub = self.create_publisher(Odometry, "/odom", 10)
+        self.marker_pub = self.create_publisher(Marker, "/visualization_marker", 10)
+        self.gps_pub = self.create_publisher(NavSatFix, "/gps_coords", 10)
+
         # Subscribe to gps_coords to get the origin
         self.origin_lat = None
         self.origin_lon = None
-        self.origin_sub = self.create_subscription(NavSatFix, '/gps_coords', self.origin_callback, 10)
+        self.origin_sub = self.create_subscription(NavSatFix, "/gps_coords", self.origin_callback, 10)
 
         self.tf_broadcaster = TransformBroadcaster(self)
 
@@ -58,13 +62,13 @@ class PointSimulator(Node):
         self.origin_lon = msg.longitude
         self.get_logger().info(f"GPS Origin set to: {self.origin_lat}, {self.origin_lon}")
 
-        self.destroy_subscription(self.origin_sub) 
+        self.destroy_subscription(self.origin_sub)
 
     def cmd_vel_callback(self, msg):
         """Sets the robot velocity and updates when robot last recieved command. Called from the joystick subcription."""
         self.vx = msg.linear.x
         self.vtheta = msg.angular.z
-        self.last_cmd_time_nanoseconds = self.get_clock().now().nanoseconds 
+        self.last_cmd_time_nanoseconds = self.get_clock().now().nanoseconds
 
     def update_position(self):
         """Sets the robot's current position based on velocity; publishes odometry and position data."""
@@ -85,8 +89,8 @@ class PointSimulator(Node):
         # Publish transform
         transform = TransformStamped()
         transform.header.stamp = self.get_clock().now().to_msg()
-        transform.header.frame_id = 'odom'
-        transform.child_frame_id = 'base_link'
+        transform.header.frame_id = "odom"
+        transform.child_frame_id = "base_link"
         transform.transform.translation.x = self.x
         transform.transform.translation.y = self.y
         transform.transform.translation.z = 0.0
@@ -98,8 +102,8 @@ class PointSimulator(Node):
         # Publish Odometry
         odom_msg = Odometry()
         odom_msg.header.stamp = self.get_clock().now().to_msg()
-        odom_msg.header.frame_id = 'odom'
-        odom_msg.child_frame_id = 'base_link'
+        odom_msg.header.frame_id = "odom"
+        odom_msg.child_frame_id = "base_link"
         odom_msg.pose.pose.position.x = self.x
         odom_msg.pose.pose.position.y = self.y
         odom_msg.pose.pose.orientation.z = sin(self.theta / 2.0)
@@ -114,30 +118,32 @@ class PointSimulator(Node):
             current_time_seconds = current_time_nanos / 1e9
             if current_time_seconds - self.last_gps_update_time_seconds >= 1:
                 self.last_gps_update_time_seconds = current_time_seconds
-                
+
                 error_magnitude = random.uniform(0, 1)
                 error_angle_radians = random.uniform(0, pi * 2)
-                
-                origin_gps_lat_meters, origin_gps_long_meters = lat_long_degrees_to_meters(self.origin_lat, self.origin_lon)
+
+                origin_gps_lat_meters, origin_gps_long_meters = lat_long_degrees_to_meters(
+                    self.origin_lat, self.origin_lon
+                )
 
                 lat, long = lat_long_meters_to_degrees(
-                    origin_gps_lat_meters + self.x + error_magnitude * cos(error_angle_radians), 
-                    origin_gps_long_meters - self.y + error_magnitude * sin(error_angle_radians)
+                    origin_gps_lat_meters + self.x + error_magnitude * cos(error_angle_radians),
+                    origin_gps_long_meters - self.y + error_magnitude * sin(error_angle_radians),
                 )
-                
+
                 gps_msg = NavSatFix()
                 gps_msg.header.stamp = self.get_clock().now().to_msg()
                 gps_msg.header.frame_id = "gps"
                 gps_msg.latitude = lat
                 gps_msg.longitude = long
-                
+
                 self.gps_pub.publish(gps_msg)
 
         # Publish Marker
         marker = Marker()
-        marker.header.frame_id = 'odom'
+        marker.header.frame_id = "odom"
         marker.header.stamp = self.get_clock().now().to_msg()
-        marker.ns = 'point_simulation'
+        marker.ns = "point_simulation"
         marker.id = 0
         marker.type = Marker.SPHERE
         marker.action = Marker.ADD
@@ -154,6 +160,7 @@ class PointSimulator(Node):
 
         self.marker_pub.publish(marker)
 
+
 def main():
     rclpy.init()
     node = PointSimulator()
@@ -161,5 +168,6 @@ def main():
     node.destroy_node()
     rclpy.shutdown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

@@ -66,6 +66,7 @@ show_error_codes = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unreachable = true
+check_untyped_defs = true
 exclude = [
     "build/",
     "install/",

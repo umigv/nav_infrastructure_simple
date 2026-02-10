@@ -1,12 +1,12 @@
 import rclpy
-from rclpy.node import Node
 from geometry_msgs.msg import Twist
-import time
+from rclpy.node import Node
+
 
 class TestMovement(Node):
     def __init__(self):
-        super().__init__('test_movement')
-        self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        super().__init__("test_movement")
+        self.pub = self.create_publisher(Twist, "/cmd_vel", 10)
         self.timer = self.create_timer(1.0, self.move_sequence)
         self.step = 0
         self.get_logger().info("Test movement node started.")
@@ -43,11 +43,13 @@ class TestMovement(Node):
         self.pub.publish(cmd)
         self.step += 1
 
+
 def main():
     rclpy.init()
     node = TestMovement()
     rclpy.spin(node)
     rclpy.shutdown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
