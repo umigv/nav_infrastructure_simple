@@ -6,7 +6,7 @@ to arbitrate between teleop and autonomy
 For both Xbox and PS4 controllers
 - Left joystick controls linear motion 
 - Right joystick controls turning. 
-- Enable is mapped to the left trigger (LT / L2)
+- Enable is mapped to the right shoulder button (RB / R1)
 - Turbo is mapped to the left shoulder button (LB / L1)
 
 The configs live in
