@@ -1,9 +1,15 @@
-from occupancy_grid_transform.occupancy_grid_transform_impl import cv_occupancy_grid_to_ros_grid, inflate_grid, compute_origin_pose
-from occupancy_grid_transform.occupancy_grid_trasform_config import InflationParams
-from nav_msgs.msg import OccupancyGrid
-from nav_utils.geometry import make_pose, get_yaw_radians_from_quaternion
 import math
+
 import numpy as np
+from nav_msgs.msg import OccupancyGrid
+from nav_utils.geometry import get_yaw_radians_from_quaternion, make_pose
+from occupancy_grid_transform.occupancy_grid_transform_impl import (
+    compute_origin_pose,
+    cv_occupancy_grid_to_ros_grid,
+    inflate_grid,
+)
+from occupancy_grid_transform.occupancy_grid_trasform_config import InflationParams
+
 
 def test_cv_occupancy_grid_to_ros_grid():
     # Provider example:
@@ -29,6 +35,7 @@ def test_cv_occupancy_grid_to_ros_grid():
     ]
 
     assert grid.reshape(-1).tolist() == [3, 6, 2, 5, 1, 4]
+
 
 def test_inflate_grid():
     params = InflationParams(
@@ -60,9 +67,10 @@ def test_inflate_grid():
     assert out[3, 6] == 0
     assert out[0, 3] == 0
 
+
 def test_compute_origin_pose():
     origin = compute_origin_pose(
-        odom=make_pose(x=1.0, y=2.0, yaw=math.pi/6),
+        odom=make_pose(x=1.0, y=2.0, yaw=math.pi / 6),
         robot_forward_offset_m=0.60,
         grid_height_cells=6,
         resolution=0.5,
@@ -70,4 +78,4 @@ def test_compute_origin_pose():
 
     assert math.isclose(origin.position.x, 2.269615242270663)
     assert math.isclose(origin.position.y, 1.0009618943233418)
-    assert math.isclose(get_yaw_radians_from_quaternion(origin.orientation), math.pi/6)
+    assert math.isclose(get_yaw_radians_from_quaternion(origin.orientation), math.pi / 6)

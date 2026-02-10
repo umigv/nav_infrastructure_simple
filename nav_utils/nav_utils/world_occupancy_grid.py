@@ -1,17 +1,21 @@
-from nav_msgs.msg import OccupancyGrid
-from geometry_msgs.msg import Point
 import math
-from typing import Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass
-from nav_utils.geometry import get_yaw_radians_from_quaternion, rotate_by_yaw
 from typing import ClassVar
+
+from geometry_msgs.msg import Point
+from nav_msgs.msg import OccupancyGrid
+
+from nav_utils.geometry import get_yaw_radians_from_quaternion, rotate_by_yaw
+
 
 @dataclass(frozen=True)
 class CellState:
     """
     Discrete occupancy state of a grid cell.
     """
-    value: int  # -1 (unknown) or 0–100 (probability occupied)
+
+    value: int  # -1 (unknown) or 0-100 (probability occupied)
 
     UNKNOWN_VALUE: ClassVar[int] = -1
     DRIVABLE_THRESHOLD: ClassVar[int] = 30
@@ -19,8 +23,10 @@ class CellState:
 
     def __post_init__(self) -> None:
         if not (0 <= self.value <= 100 or self.value in [CellState.UNKNOWN_VALUE, CellState.SELF_DRIVE_GOAL_VALUE]):
-            raise ValueError("CellState value must be within [0, 100] or equal to CellState.UNKNOWN_VALUE or "
-                             "CellState.SELF_DRIVE_GOAL_VALUE")
+            raise ValueError(
+                "CellState value must be within [0, 100] or equal to CellState.UNKNOWN_VALUE or "
+                "CellState.SELF_DRIVE_GOAL_VALUE"
+            )
 
     @classmethod
     def unknown_cell(cls) -> "CellState":
@@ -45,14 +51,15 @@ class CellState:
         """
         True if the cell is cell drive goal
         """
-        return self.value == CellState.SELF_DRIVE_GOAL_VALUE        
+        return self.value == CellState.SELF_DRIVE_GOAL_VALUE
+
 
 class WorldOccupancyGrid:
     """
     Continuous world-facing view of an occupancy grid.
 
-    This class wraps a discrete `nav_msgs/msg/OccupancyGrid` and exposes it as a continuous world-coordinate 
-    representation. This abstraction allows discrete grid-based search (e.g. A*, BFS) to be expressed entirely in world 
+    This class wraps a discrete `nav_msgs/msg/OccupancyGrid` and exposes it as a continuous world-coordinate
+    representation. This abstraction allows discrete grid-based search (e.g. A*, BFS) to be expressed entirely in world
     coordinates, while preserving correct grid semantics.
 
     Conceptually, the occupancy grid is treated as an infinite world:
@@ -77,7 +84,7 @@ class WorldOccupancyGrid:
         - data is stored in row major order
 
         Args:
-            grid: Occupancy grid message. 
+            grid: Occupancy grid message.
         """
         self._occupancy_grid = grid
         self._yaw = get_yaw_radians_from_quaternion(self._occupancy_grid.info.origin.orientation)
@@ -86,7 +93,7 @@ class WorldOccupancyGrid:
         """
         Query the occupancy state at a world-coordinate point.
 
-        The point is projected into the underlying occupancy grid. If the projected grid index lies outside the grid 
+        The point is projected into the underlying occupancy grid. If the projected grid index lies outside the grid
         bounds, the state is treated as UNKNOWN.
 
         Args:
@@ -97,7 +104,7 @@ class WorldOccupancyGrid:
         """
         grid_x, grid_y = self._world_to_grid_index(point)
 
-        if not(0 <= grid_x < self._occupancy_grid.info.width and 0 <= grid_y < self._occupancy_grid.info.height):
+        if not (0 <= grid_x < self._occupancy_grid.info.width and 0 <= grid_y < self._occupancy_grid.info.height):
             return CellState.unknown_cell()
 
         return CellState(self._occupancy_grid.data[grid_y * self._occupancy_grid.info.width + grid_x])
@@ -117,7 +124,7 @@ class WorldOccupancyGrid:
         """
         Generate 4-connected neighboring world points for discrete grid search.
 
-        Neighbors correspond to the centers of the grid cells adjacent to the cell containing `point` in the cardinal 
+        Neighbors correspond to the centers of the grid cells adjacent to the cell containing `point` in the cardinal
         directions (±X, ±Y).
 
         Args:
@@ -135,7 +142,7 @@ class WorldOccupancyGrid:
         """
         Generate 8-connected neighboring world points for discrete grid search.
 
-        Neighbors correspond to the centers of all adjacent grid cells, including diagonals, around the cell containing 
+        Neighbors correspond to the centers of all adjacent grid cells, including diagonals, around the cell containing
         `point`.
 
         Args:
@@ -156,7 +163,7 @@ class WorldOccupancyGrid:
         """
         Generate a forward-biased set of neighboring world points.
 
-        This expansion favors motion in front of the robot and is useful for planners that prefer forward progress. 
+        This expansion favors motion in front of the robot and is useful for planners that prefer forward progress.
         The expansion includes: forward, forward-left, forward-right, left, and right neighbors.
 
         Args:
@@ -170,9 +177,9 @@ class WorldOccupancyGrid:
         candidates = [
             (1, 0),  # forward
             (1, 1),  # forward-left
-            (1, -1), # forward-right
+            (1, -1),  # forward-right
             (0, 1),  # left
-            (0, -1), # right
+            (0, -1),  # right
         ]
 
         for dx, dy in candidates:
@@ -182,7 +189,7 @@ class WorldOccupancyGrid:
         """
         Compute a stable hash key for the grid cell containing a world point.
 
-        All world points that project into the same grid cell will produce the same hash key. This enables discrete 
+        All world points that project into the same grid cell will produce the same hash key. This enables discrete
         search bookkeeping (e.g. visited sets) without storing raw grid indices or floating-point coordinates.
 
         Args:
@@ -210,18 +217,24 @@ class WorldOccupancyGrid:
         Returns:
             (grid_x, grid_y) integer indices corresponding to the grid cell containing the point.
         """
-        grid = rotate_by_yaw(Point(x = world.x - self._occupancy_grid.info.origin.position.x,
-                                   y = world.y - self._occupancy_grid.info.origin.position.y, 
-                                   z = 0.0), -self._yaw)
-        
-        return math.floor(grid.x / self._occupancy_grid.info.resolution), \
-               math.floor(grid.y / self._occupancy_grid.info.resolution)
+        grid = rotate_by_yaw(
+            Point(
+                x=world.x - self._occupancy_grid.info.origin.position.x,
+                y=world.y - self._occupancy_grid.info.origin.position.y,
+                z=0.0,
+            ),
+            -self._yaw,
+        )
+
+        return math.floor(grid.x / self._occupancy_grid.info.resolution), math.floor(
+            grid.y / self._occupancy_grid.info.resolution
+        )
 
     def _grid_index_center_to_world(self, grid_x: int, grid_y: int) -> Point:
         """
         Convert a grid cell index to the world-coordinate position of its center.
 
-        This is the inverse of `_world_to_grid_index` (up to quantization), mapping discrete grid indices back into 
+        This is the inverse of `_world_to_grid_index` (up to quantization), mapping discrete grid indices back into
         continuous world space.
 
         Args:
@@ -231,12 +244,16 @@ class WorldOccupancyGrid:
         Returns:
             World-coordinate point at the center of the specified grid cell.
         """
-        grid = Point(x = (grid_x + 0.5) * self._occupancy_grid.info.resolution, 
-                     y = (grid_y + 0.5) * self._occupancy_grid.info.resolution, 
-                     z = 0.0) 
+        grid = Point(
+            x=(grid_x + 0.5) * self._occupancy_grid.info.resolution,
+            y=(grid_y + 0.5) * self._occupancy_grid.info.resolution,
+            z=0.0,
+        )
 
         rotated = rotate_by_yaw(grid, self._yaw)
 
-        return Point(x = rotated.x + self._occupancy_grid.info.origin.position.x, 
-                     y = rotated.y + self._occupancy_grid.info.origin.position.y, 
-                     z = 0.0)
+        return Point(
+            x=rotated.x + self._occupancy_grid.info.origin.position.x,
+            y=rotated.y + self._occupancy_grid.info.origin.position.y,
+            z=0.0,
+        )

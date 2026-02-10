@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class InflationParams:
     """
     Parameters controlling obstacle inflation for an occupancy grid.
 
-    These parameters define how occupied cells are expanded to create a safety buffer around obstacles before planning. 
-    Inflation is performed in grid (cell) space and consists of a fully inflated core region surrounded by an optional 
+    These parameters define how occupied cells are expanded to create a safety buffer around obstacles before planning.
+    Inflation is performed in grid (cell) space and consists of a fully inflated core region surrounded by an optional
     falloff region where obstacle influence decays with distance.
     """
 
@@ -37,16 +38,15 @@ class InflationParams:
     def __post_init__(self):
         if self.inflation_radius_cells < 0:
             raise ValueError("InflationParams: inflation_radius_cells must be > 0")
-        
+
         if self.inflation_falloff_radius_cells < 0:
             raise ValueError("InflationParams: inflation_falloff_radius_cells must be > 0")
-        
+
         if self.inflation_radius_cells > self.inflation_falloff_radius_cells:
             raise ValueError("InflationParams: inflation_falloff_radius_cells must be >= inflation_radius_cells")
 
         if not (0 < self.inflation_decay_factor < 1):
             raise ValueError("InflationParams: inflation_decay_factor must be between 0 and 1")
-        
 
 
 @dataclass(frozen=True)
@@ -54,10 +54,10 @@ class OccupancyGridTransformConfig:
     """
     Configuration for transforming a robot-centric occupancy grid into a world-aligned ROS `nav_msgs/msg/OccupancyGrid`.
 
-    This configuration controls obstacle inflation, grid anchoring relative to the robot pose, and the coordinate frame 
+    This configuration controls obstacle inflation, grid anchoring relative to the robot pose, and the coordinate frame
     in which the transformed grid is published.
     """
-    
+
     """Parameters controlling obstacle inflation applied to the grid prior to publishing."""
     inflation_params: InflationParams
 
