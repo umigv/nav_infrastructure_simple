@@ -3,7 +3,7 @@ import numpy as np
 from nav_msgs.msg import OccupancyGrid, MapMetaData
 from geometry_msgs.msg import Pose, Point, Quaternion
 from nav_utils.world_occupancy_grid import WorldOccupancyGrid, CellState
-from nav_utils.geometry import make_quarternion_from_yaw, make_pose
+from nav_utils.geometry import make_quarternion_from_yaw, make_pose, point_is_close
 
 def make_occupancy_grid() -> OccupancyGrid:
     return OccupancyGrid(
@@ -15,10 +15,6 @@ def make_occupancy_grid() -> OccupancyGrid:
         ),
         data=np.zeros(36).astype(np.int8).tolist()
     )
-
-def point_is_close(pointA: Point, pointB: Point) -> bool:
-    """Checks if two points are close"""
-    return math.isclose(pointA.x, pointB.x, abs_tol=0.01) and math.isclose(pointA.y, pointB.y, abs_tol=0.01)
 
 def test_world_to_grid_index():
     grid = WorldOccupancyGrid(make_occupancy_grid())
@@ -38,9 +34,9 @@ def test_state():
     
     grid = WorldOccupancyGrid(occupancy_grid)
 
-    assert grid.state(Point(x=2.5, y=2.0, z=0.0)).drivable
-    assert not grid.state(Point(x=3.25, y=3.5, z=0.0)).drivable
-    assert grid.state(Point(x=2.0, y=1.0, z=0.0)).unknown
+    assert grid.state(Point(x=2.5, y=2.0, z=0.0)).isDrivable
+    assert not grid.state(Point(x=3.25, y=3.5, z=0.0)).isDrivable
+    assert grid.state(Point(x=2.0, y=1.0, z=0.0)).isUnknown
 
 def test_neighbors():
     grid = WorldOccupancyGrid(make_occupancy_grid())
@@ -69,6 +65,25 @@ def test_neighbors():
         (4, 4),  # left
         (4, 2),  # right
     ]
+
+def test_all_in_bound():
+    grid = WorldOccupancyGrid(OccupancyGrid(
+        info=MapMetaData(
+            resolution=2.0,
+            width=2,
+            height=2,
+            origin=make_pose(x=0.0, y=0.0, yaw=0.0)
+        ),
+        data=np.zeros(4).astype(np.int8).tolist()
+    ))
+
+    points = list(grid.inBoundPoints())
+    expected = [Point(x=1.0, y=1.0, z=0.0), Point(x=3.0, y=1.0, z=0.0), Point(x=1.0, y=3.0, z=0.0), 
+                Point(x=3.0, y=3.0, z=0.0)]
+
+    assert len(points) == len(expected)
+    for e in expected:
+        assert any(point_is_close(p, e) for p in points)
 
 def test_hash_key_same_grid():
     grid = WorldOccupancyGrid(make_occupancy_grid())

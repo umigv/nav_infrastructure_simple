@@ -15,28 +15,37 @@ class CellState:
 
     UNKNOWN_VALUE: ClassVar[int] = -1
     DRIVABLE_THRESHOLD: ClassVar[int] = 30
+    SELF_DRIVE_GOAL_VALUE: ClassVar[int] = 127
 
     def __post_init__(self) -> None:
-        if not (0 <= self.value <= 100 or self.value == CellState.UNKNOWN_VALUE):
-            raise ValueError("CellState value must be within [0, 100] or equal to CellState.UNKNOWN_VALUE")
+        if not (0 <= self.value <= 100 or self.value in [CellState.UNKNOWN_VALUE, CellState.SELF_DRIVE_GOAL_VALUE]):
+            raise ValueError("CellState value must be within [0, 100] or equal to CellState.UNKNOWN_VALUE or "
+                             "CellState.SELF_DRIVE_GOAL_VALUE")
 
     @classmethod
     def unknown_cell(cls) -> "CellState":
         return cls(cls.UNKNOWN_VALUE)
 
     @property
-    def drivable(self) -> bool:
+    def isDrivable(self) -> bool:
         """
         True if the cell can be traversed by the robot
         """
-        return 0 <= self.value <= 30
+        return 0 <= self.value <= CellState.DRIVABLE_THRESHOLD or self.isSelfDriveGoal
 
     @property
-    def unknown(self) -> bool:
+    def isUnknown(self) -> bool:
         """
         True if the cell value is unknown
         """
         return self.value == CellState.UNKNOWN_VALUE
+
+    @property
+    def isSelfDriveGoal(self) -> bool:
+        """
+        True if the cell is cell drive goal
+        """
+        return self.value == CellState.SELF_DRIVE_GOAL_VALUE        
 
 class WorldOccupancyGrid:
     """
@@ -92,6 +101,17 @@ class WorldOccupancyGrid:
             return CellState.unknown_cell()
 
         return CellState(self._occupancy_grid.data[grid_y * self._occupancy_grid.info.width + grid_x])
+
+    def inBoundPoints(self) -> Iterator[Point]:
+        """
+        Generate a point in all in bound grids
+
+        Yields:
+            World-coordinate points at the centers of neighboring grid cells.
+        """
+        for x in range(self._occupancy_grid.info.width):
+            for y in range(self._occupancy_grid.info.height):
+                yield self._grid_index_center_to_world(x, y)
 
     def neighbors4(self, point: Point) -> Iterator[Point]:
         """
