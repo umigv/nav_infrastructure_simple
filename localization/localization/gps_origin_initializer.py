@@ -1,11 +1,13 @@
+import math
+from statistics import median
+
+import nav_utils.config
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import NavSatFix
 from robot_localization.srv import SetDatum
-from statistics import median
-import math
+from sensor_msgs.msg import NavSatFix
+
 from .gps_origin_initializer_config import GpsOriginInitializerConfig
-import nav_utils.config
 
 
 class GpsOriginInitializer(Node):
@@ -14,17 +16,11 @@ class GpsOriginInitializer(Node):
 
         self.config = nav_utils.config.load(self, GpsOriginInitializerConfig)
 
-        self.gps_subscriber = self.create_subscription(
-            NavSatFix, "gps", self.gps_callback, 10
-        )
-        self.get_logger().info(
-            f"Subscribing to GPS data on topic: {self.gps_subscriber.topic_name}"
-        )
+        self.gps_subscriber = self.create_subscription(NavSatFix, "gps", self.gps_callback, 10)
+        self.get_logger().info(f"Subscribing to GPS data on topic: {self.gps_subscriber.topic_name}")
 
         self.client = self.create_client(SetDatum, "set_datum")
-        self.get_logger().info(
-            f"Waiting for service {self.client.srv_name} to be available..."
-        )
+        self.get_logger().info(f"Waiting for service {self.client.srv_name} to be available...")
         self.client.wait_for_service()
 
         self.samples: list[NavSatFix] = []
@@ -40,9 +36,7 @@ class GpsOriginInitializer(Node):
         if self.sent:
             return
 
-        self.get_logger().debug(
-            f"Received data: lat={msg.latitude}, lon={msg.longitude}, alt={msg.altitude}"
-        )
+        self.get_logger().debug(f"Received data: lat={msg.latitude}, lon={msg.longitude}, alt={msg.altitude}")
 
         h_sigma = math.sqrt(msg.position_covariance[0])
         if h_sigma > self.config.max_h_sigma_m:
@@ -53,9 +47,7 @@ class GpsOriginInitializer(Node):
 
         self.samples.append(msg)
 
-        time_elapsed = (
-            self.samples[-1].header.stamp.sec - self.samples[0].header.stamp.sec
-        ) + (
+        time_elapsed = (self.samples[-1].header.stamp.sec - self.samples[0].header.stamp.sec) + (
             self.samples[-1].header.stamp.nanosec - self.samples[0].header.stamp.nanosec
         ) / 1e9
         if (
@@ -72,15 +64,11 @@ class GpsOriginInitializer(Node):
         self.get_logger().info(
             f"Collected {len(self.samples)} samples below horizontal sigma {self.config.max_h_sigma_m}m."
         )
-        self.get_logger().info(
-            str([(sample.latitude, sample.longitude) for sample in self.samples])
-        )
+        self.get_logger().info(str([(sample.latitude, sample.longitude) for sample in self.samples]))
         latitude = median(sample.latitude for sample in self.samples)
         longitude = median(sample.longitude for sample in self.samples)
 
-        self.get_logger().info(
-            f"Setting origin to median lat={latitude:.8f}, lon={longitude:.8f}"
-        )
+        self.get_logger().info(f"Setting origin to median lat={latitude:.8f}, lon={longitude:.8f}")
         request = SetDatum.Request()
         request.geo_pose.position.latitude = latitude
         request.geo_pose.position.longitude = longitude
@@ -101,9 +89,7 @@ class GpsOriginInitializer(Node):
     def on_response(self, future):
         try:
             future.result()
-            self.get_logger().info(
-                "Origin set successfully. map frame is now aligned to startup GPS origin."
-            )
+            self.get_logger().info("Origin set successfully. map frame is now aligned to startup GPS origin.")
         except Exception as e:
             self.get_logger().error(f"{self.client.srv_name} call error: {e}")
 
