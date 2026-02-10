@@ -1,0 +1,11 @@
+-
+name: teleop
+topic: teleop_cmd_vel
+timeout: 0.5
+priority: 100
+-
+name: nav
+topic: nav_cmd_vel
+timeout: 0.5
+priority: 10
+-

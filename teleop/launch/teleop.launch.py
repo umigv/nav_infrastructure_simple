@@ -21,7 +21,8 @@ def _launch_setup(context, *args, **kwargs):
     if controller not in controller_config:
         raise RuntimeError(f"Unknown controller '{controller}'. Expected one of: {', '.join(controller_config.keys())}")
 
-    config_file = controller_config[controller]
+    teleop_config_file = controller_config[controller]
+    twist_mux_topics = os.path.join(pkg_share, "config", "twist_mux_topics.yaml")
     joystick_dev = LaunchConfiguration("joystick_dev").perform(context).strip()
 
     return [
@@ -31,7 +32,7 @@ def _launch_setup(context, *args, **kwargs):
             name="joystick_node",
             output="screen",
             parameters=[
-                config_file,
+                teleop_config_file,
                 {"dev": joystick_dev},
             ],
         ),
@@ -40,8 +41,18 @@ def _launch_setup(context, *args, **kwargs):
             executable="teleop_node",
             name="teleop_twist_joy_node",
             output="screen",
-            parameters=[config_file],
+            parameters=[teleop_config_file],
             remappings=[("cmd_vel", "teleop_cmd_vel")],
+        ),
+        Node(
+            package="twist_mux",
+            executable="twist_mux",
+            name="twist_mux_node",
+            output="screen",
+            parameters=[{"topics": twist_mux_topics}],
+            remappings=[
+                ("cmd_vel_out", "cmd_vel"),
+            ],
         ),
     ]
 
