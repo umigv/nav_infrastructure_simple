@@ -1,6 +1,12 @@
 from geometry_msgs.msg import Point, Quaternion, Pose
 import math
 
+def point_is_close(pointA: Point, pointB: Point) -> bool:
+    """Whether two points are close enough for nav's purposes"""
+    return math.isclose(pointA.x, pointB.x, abs_tol=0.01) and \
+           math.isclose(pointA.y, pointB.y, abs_tol=0.01) and \
+           math.isclose(pointA.z, pointB.z, abs_tol=0.01)
+
 def get_yaw_radians_from_quaternion(q: Quaternion) -> float:
     """Extract radians of yaw rotation from Quaternion https://en.wikipedia.org/wiki/Quaternion."""
     siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
