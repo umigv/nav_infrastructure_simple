@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+: "${ROS_DISTRO:=humble}"
+if [[ -f "/opt/ros/${ROS_DISTRO}/setup.bash" ]]; then
+  # shellcheck disable=SC1090
+  source "/opt/ros/${ROS_DISTRO}/setup.bash"
+else
+  echo "ERROR: ROS setup not found at /opt/ros/${ROS_DISTRO}/setup.bash"
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 WS_ROOT="$(cd -- "${REPO_ROOT}/../.." && pwd)"
