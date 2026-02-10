@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${ROS_DISTRO:=humble}"
-if [[ -f "/opt/ros/${ROS_DISTRO}/setup.bash" ]]; then
-  # shellcheck disable=SC1090
-  source "/opt/ros/${ROS_DISTRO}/setup.bash"
-else
-  echo "ERROR: ROS setup not found at /opt/ros/${ROS_DISTRO}/setup.bash"
+export ROS_VERSION=2
+export ROS_DISTRO="${ROS_DISTRO:=humble}"
+ROS_SETUP="/opt/ros/${ROS_DISTRO}/setup.bash"
+if [[ ! -f "$ROS_SETUP" ]]; then
+  echo "ERROR: ROS setup not found at $ROS_SETUP"
   exit 1
 fi
+
+set +u
+source "$ROS_SETUP"
+set -u
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
