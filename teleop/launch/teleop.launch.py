@@ -8,20 +8,13 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-pkg_share = get_package_share_directory("teleop")
-
-controller_config = {
-    "ps4": os.path.join(pkg_share, "config", "teleop_ps4.yaml"),
-    "xbox": os.path.join(pkg_share, "config", "teleop_xbox.yaml"),
-}
+CONTROLLERS = ("ps4", "xbox")
 
 
 def _launch_setup(context, *args, **kwargs):
+    pkg_share = get_package_share_directory("teleop")
     controller = LaunchConfiguration("controller").perform(context).strip().lower()
-    if controller not in controller_config:
-        raise RuntimeError(f"Unknown controller '{controller}'. Expected one of: {', '.join(controller_config.keys())}")
-
-    teleop_config_file = controller_config[controller]
+    teleop_config_file = os.path.join(pkg_share, "config", f"teleop_{controller}.yaml")
     twist_mux_config_file = os.path.join(pkg_share, "config", "twist_mux.yaml")
     joystick_dev = LaunchConfiguration("joystick_dev").perform(context).strip()
 
@@ -62,7 +55,8 @@ def generate_launch_description() -> LaunchDescription:
         [
             DeclareLaunchArgument(
                 "controller",
-                description=f"Controller profile: {', '.join(controller_config.keys())}",
+                choices=list(CONTROLLERS),
+                description="Controller profile",
             ),
             DeclareLaunchArgument(
                 "joystick_dev",
