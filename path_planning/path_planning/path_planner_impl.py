@@ -61,28 +61,29 @@ def find_drivable_start(
     Returns:
         The nearest drivable point, or None if none exists within the radius.
     """
-    visited: set[int] = set()
-    candidates: deque[Point] = deque()
+    if grid.state(robot_position).isDrivable:
+        return robot_position
 
-    visited.add(grid.hash_key(robot_position))
-    candidates.append(robot_position)
+    visited: set[int] = {grid.hash_key(robot_position)}
+    candidates: deque[Point] = deque([robot_position])
 
     while candidates:
         current = candidates.popleft()
 
         for neighbor in grid.neighbors_forward(current):
-            if distance(neighbor, robot_position) > max_search_radius:
-                continue
-
             key = grid.hash_key(neighbor)
             if key in visited:
                 continue
             visited.add(key)
 
+            if distance(neighbor, robot_position) > max_search_radius:
+                continue
+
             if grid.state(neighbor).isDrivable:
                 return neighbor
 
-            candidates.append(neighbor)
+            if grid.state(neighbor).isUnknown:
+                candidates.append(neighbor)
 
     return None
 
@@ -103,18 +104,16 @@ def plan_path(grid: WorldOccupancyGrid, start: Point, goal: Point) -> list[Point
         List of world-coordinate points from start to goal (or closest
         reachable point), or None if no drivable cells are reachable.
     """
-    came_from: dict[int, int | None] = {}
-    point_of: dict[int, Point] = {}
-    cost_so_far: dict[int, float] = {}
-    priority_queue: list[_PriorityEntry] = []
-
     start_key = grid.hash_key(start)
     goal_key = grid.hash_key(goal)
 
-    came_from[start_key] = None
-    point_of[start_key] = start
-    cost_so_far[start_key] = 0.0
-    heapq.heappush(priority_queue, _PriorityEntry(distance(start, goal), start_key))
+    if start_key == goal_key:
+        return [start]
+
+    came_from: dict[int, int | None] = {start_key: None}
+    point_of: dict[int, Point] = {start_key: start}
+    cost_so_far: dict[int, float] = {start_key: 0.0}
+    priority_queue: list[_PriorityEntry] = [_PriorityEntry(distance(start, goal), start_key)]
 
     best_goal_key = start_key
     best_goal_distance = distance(start, goal)
@@ -132,14 +131,12 @@ def plan_path(grid: WorldOccupancyGrid, start: Point, goal: Point) -> list[Point
             best_goal_key = current_key
             best_goal_distance = current_distance
 
-        current_cost = cost_so_far[current_key]
-
         for neighbor in grid.neighbors8(current_point):
             if not grid.state(neighbor).isDrivable:
                 continue
 
             neighbor_key = grid.hash_key(neighbor)
-            neighbor_cost = current_cost + distance(current_point, neighbor)
+            neighbor_cost = cost_so_far[current_key] + distance(current_point, neighbor)
 
             if neighbor_key not in cost_so_far or neighbor_cost < cost_so_far[neighbor_key]:
                 cost_so_far[neighbor_key] = neighbor_cost
