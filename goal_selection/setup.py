@@ -20,7 +20,7 @@ setup(
     extras_require={},
     entry_points={
         'console_scripts': [
-            'goal_selection = goal_selection.node:main'
+            'goal_selection = goal_selection.goal_selection:main'
         ],
     },
 )
