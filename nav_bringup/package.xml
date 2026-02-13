@@ -2,10 +2,20 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nav_bringup</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="102838865+hardy-ethan@users.noreply.github.com">arv</maintainer>
+  <version>0.1.0</version>
+  <description>Launch files and shared configuration for the navigation stack</description>
+  <maintainer email="hardyem@umich.edu">Ethan Hardy</maintainer>
   <license>Apache-2.0</license>
+
+  <exec_depend>ros2launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>vectornav</exec_depend>
+  <exec_depend>gps_publisher</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>point_simulator</exec_depend>
+  <exec_depend>goal_selection</exec_depend>
+  <exec_depend>occupancy_grid_transform</exec_depend>
+  <exec_depend>path_tracking</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
