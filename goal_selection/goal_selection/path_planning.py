@@ -10,8 +10,8 @@ from nav_msgs.msg import OccupancyGrid, Path
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
 from rclpy.node import Node
 from std_msgs.msg import Header
-import nav_utils.geometry import distance
-
+from nav_utils.nav_utils.geometry import distance
+from nav_utils.nav_utils.world_occupancy_grid import WorldOccupancyGrid 
 
 @dataclass(order=True)
 class KeyAndCost:
@@ -53,8 +53,6 @@ def find_closest_drivable_point(grid: WorldOccupancyGrid, robot_position: Point)
     
     return None
 
-
-
 def generate_path(grid: WorldOccupancyGrid, start: Point, goal: Point):
     """
     Generate a good path for the robot to follow towards the goal using the A* search
@@ -76,48 +74,36 @@ def generate_path(grid: WorldOccupancyGrid, start: Point, goal: Point):
     while len(priority_queue) > 0:
         current_key = heapq.heappop(priority_queue).key
         current_point = point_of[current_key]
-        current_cost = cost_so_far[current_key]
 
         if distance(current_point, goal) < best_goal_distance:
             best_goal_key = current_key
             best_goal_distance = distance(current_point, goal)
 
+        if current_key == goal_key:
+            best_goal_key = current_key
+            break
+
         for neighbor in grid.neighbors8(current_point):
             if grid.state(neighbor).is_drivable:
                 continue
 
-            # Edge cost distance between indices (1 for straight, sqrt(2) for diagonal)
-            edge_cost = math.sqrt(dy * dy + dx * dx) * occupancy_grid.info.resolution
-            
-            new_cost = current_cost + edge_cost
+            neighbor_key = grid.hash_key(neighbor)
+            neighbor_cost = cost_so_far[current_key] + distance(current_point, neighbor)
 
-            # Unexplored node or we found a better way to get to the node
-            if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
-                cost_so_far[neighbor] = new_cost
-                came_from[neighbor] = current_index
-                
+            if neighbor not in cost_so_far or neighbor_cost < cost_so_far[neighbor]:
+                cost_so_far[neighbor_key] = neighbor_cost
+                came_from[neighbor_key] = current_key
+                point_of[neighbor_key] = neighbor
                 # A* priority: cost_so_far + heuristic (distance to waypoint)
-                heuristic = index_cost(
-                    occupancy_grid_resolution=occupancy_grid.info.resolution,
-                    index=neighbor,
-                    robot_pose=robot_pose,
-                    waypoint_meters=waypoint_meters
-                )
-                priority = new_cost + heuristic
-                heapq.heappush(priority_queue, IndexAndCost(cost=priority, index=neighbor))
-
-    goal_selection_node.get_logger().info(f"Generated path from {start_index} to {best_goal_index}!")
+                priority = neighbor_cost + distance(neighbor, goal)
+                heapq.heappush(priority_queue, KeyAndCost(priority, neighbor_key))
 
     # In order to construct a path from the search process, start from the best node
     # within the occupancy grid, and work backwards until you reach the start node. 
-    backtrace: list[OccupancyGridIndex] = []
-    current_backtrace_index = dataclasses.replace(best_goal_index)
-    while came_from[current_backtrace_index] != null_occ_grid_index:
-        backtrace.append(current_backtrace_index)
-        current_backtrace_index = came_from[current_backtrace_index]
+    backtrace: list[Point] = []
+    current_key: int | None = best_goal_key
+    while current_key != None:
+        backtrace.append(point_of[current_key])
+        current_key = came_from[current_key]
 
     return reversed(backtrace)
-
-
-
-    
