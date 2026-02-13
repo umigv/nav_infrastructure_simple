@@ -1,12 +1,8 @@
 {
     "waypoints": [
-        {
-            "latitude": 42.294453,
-            "longitude": -83.708462
-        },
-        {
-            "latitude": 42.294494,
-            "longitude": -83.708462
-        }
+        {"latitude": 42.29478329, "longitude": -83.70810902},
+        {"latitude": 42.29483487, "longitude": -83.70780593},
+        {"latitude": 42.29462457, "longitude": -83.70792126},
+        {"latitude": 42.294621, "longitude": -83.708112}
     ]
 }
