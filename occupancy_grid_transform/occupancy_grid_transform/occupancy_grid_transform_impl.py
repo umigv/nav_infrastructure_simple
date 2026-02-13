@@ -8,7 +8,7 @@ from geometry_msgs.msg import Point, Pose, Quaternion
 from nav_msgs.msg import OccupancyGrid
 from nav_utils.geometry import get_yaw_radians_from_quaternion, rotate_by_yaw
 
-from .occupancy_grid_trasform_config import InflationParams
+from .occupancy_grid_trasform_config import InflationParams, WeightParams
 
 
 def cv_occupancy_grid_to_ros_grid(grid: OccupancyGrid) -> np.ndarray:
@@ -141,14 +141,7 @@ def compute_origin_pose(
             orientation = Quaternion(w=1.0, x=0.0, y=0.0, z=0.0)
         )
     
-def weight_grid(
-        grid: np.ndarray,
-        quadratic_factor: float = .25,
-        linear_factor: float = 1,
-        linear_ratio:  float = .75,
-        top_bar_size: int = 30,
-        top_bar_weight: int = 15
-    ) -> np.ndarray:
+def weight_grid( grid: np.ndarray, params: WeightParams)-> np.ndarray:
     """Generates the weighting grid of an occupancy grid of a given size as a 2D Numpy Array. Will need to play with default weightings"""
 
 
@@ -161,14 +154,14 @@ def weight_grid(
         y = 0
         while (y < height): 
                #weight the bottom. this is weighted assuming the top is 0.
-                if (y < (height - (height* linear_ratio))):
-                    grid[x,y] += (height*linear_ratio-(y+1)) *  linear_factor
+                if (y < (height - (height* params.linear_ratio))):
+                    grid[x,y] += (height*params.linear_ratio-(y+1)) *  params.linear_factor
                 #weight the top bar a little. this is weighted assuming the top is 0.
-                if (y >= height - top_bar_size):
-                    grid[x,y] += top_bar_weight
+                if (y >= height - params.top_bar_size):
+                    grid[x,y] += params.top_bar_weight
                 #quadratic rating on the center
                 #change the weighting as needed
-                grid[x,y] += quadratic_factor * pow(float(width/2) - float(x), 2)
+                grid[x,y] += params.quadratic_factor * pow(float(width/2) - float(x), 2)
 
                 #set this to max if it's greater
                 grid[x,y] = min(grid[x,y], 100)

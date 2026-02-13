@@ -50,6 +50,46 @@ class InflationParams:
 
 
 @dataclass(frozen=True)
+class WeightParams:
+    """
+    Parameters controlling weighting for inflated occupancy grid.
+    """
+
+    """
+    Quadratic Factor: coefficient determining how strongly the y direction is are weighted as they move away from the center of the grid.
+    """
+    quadratic_factor: float = 0.25
+
+    """
+    linear factor: how the weighting scales with distance from y=0 (behind the robot)
+    """
+    linear_factor: float = 1
+
+    """
+    Linear ratio: the percent of the grid that is scaled by linear weight
+    """
+
+    linear_ratio:  float = .75
+
+    """
+    Top bar size: number of rows discouraged from being driveable at the opposite end of the grid from the robot.
+    """
+
+    top_bar_size: int = 30
+
+    """
+    Top bar weight: extent to which the rows at the opposite end of the grid from the robot are weighted.
+    """
+
+    top_bar_weight: int = 15
+    
+
+    def __post_init__(self):
+        if self.linear_ratio >  1 or self.linear_ratio <  0:
+            raise ValueError("WeightParams: linear_ratio must be between 0 and 1.")
+
+
+@dataclass(frozen=True)
 class OccupancyGridTransformConfig:
     """
     Configuration for transforming a robot-centric occupancy grid into a world-aligned ROS `nav_msgs/msg/OccupancyGrid`.
@@ -60,6 +100,9 @@ class OccupancyGridTransformConfig:
 
     """Parameters controlling obstacle inflation applied to the grid prior to publishing."""
     inflation_params: InflationParams
+
+    """Parameters controlling positional weighting applied to the grid prior to publishing."""
+    weight_params: WeightParams
 
     """TF frame ID in which the transformed occupancy grid is published.
 
@@ -74,3 +117,4 @@ class OccupancyGridTransformConfig:
     `robot_forward_offset_m` meters in front of the robot along +x.
     """
     robot_forward_offset_m: float = 0.60
+

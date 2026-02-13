@@ -14,6 +14,7 @@ class OccupancyGridTransform(Node):
         super().__init__("occupancy_grid_transform")
 
         self.config: OccupancyGridTransformConfig = nav_utils.config.load(self, OccupancyGridTransformConfig)
+        
 
         self._odom: Odometry | None = None
 
@@ -28,7 +29,7 @@ class OccupancyGridTransform(Node):
     def occupancy_grid_callback(self, msg: OccupancyGrid) -> None:
         grid = cv_occupancy_grid_to_ros_grid(msg)
         inflated_grid = inflate_grid(grid, self.config.inflation_params)
-        weighted_grid = weight_grid(inflated_grid)
+        weighted_grid = weight_grid(inflated_grid, self.config.weight_params)
         height, width = grid.shape
         origin = compute_origin_pose(
             odom=self._odom.pose.pose if self._odom is not None else None,
