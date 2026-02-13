@@ -68,24 +68,20 @@ class WeightParams:
     """
     Linear ratio: the percent of the grid that is scaled by linear weight
     """
-
-    linear_ratio:  float = .75
+    linear_ratio: float = 0.75
 
     """
     Top bar size: number of rows discouraged from being driveable at the opposite end of the grid from the robot.
     """
-
     top_bar_size: int = 30
 
     """
     Top bar weight: extent to which the rows at the opposite end of the grid from the robot are weighted.
     """
-
     top_bar_weight: int = 15
-    
 
     def __post_init__(self):
-        if self.linear_ratio >  1 or self.linear_ratio <  0:
+        if self.linear_ratio > 1 or self.linear_ratio < 0:
             raise ValueError("WeightParams: linear_ratio must be between 0 and 1.")
 
 
@@ -117,4 +113,3 @@ class OccupancyGridTransformConfig:
     `robot_forward_offset_m` meters in front of the robot along +x.
     """
     robot_forward_offset_m: float = 0.60
-

@@ -5,7 +5,7 @@ from nav_msgs.msg import MapMetaData, OccupancyGrid, Odometry
 from rclpy.node import Node
 from std_msgs.msg import Header
 
-from .occupancy_grid_transform_impl import compute_origin_pose, cv_occupancy_grid_to_ros_grid, weight_grid, inflate_grid
+from .occupancy_grid_transform_impl import compute_origin_pose, cv_occupancy_grid_to_ros_grid, inflate_grid, weight_grid
 from .occupancy_grid_trasform_config import OccupancyGridTransformConfig
 
 
@@ -14,7 +14,6 @@ class OccupancyGridTransform(Node):
         super().__init__("occupancy_grid_transform")
 
         self.config: OccupancyGridTransformConfig = nav_utils.config.load(self, OccupancyGridTransformConfig)
-        
 
         self._odom: Odometry | None = None
 
@@ -46,7 +45,7 @@ class OccupancyGridTransform(Node):
             )
         )
 
-        
+
 def main() -> None:
     rclpy.init()
     node = OccupancyGridTransform()

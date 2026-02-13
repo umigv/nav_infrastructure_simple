@@ -136,39 +136,36 @@ def compute_origin_pose(
             orientation=odom.orientation,
         )
     else:
-        return Pose(
-            position = Point(x=local.x, y=local.y, z=0.0),
-            orientation = Quaternion(w=1.0, x=0.0, y=0.0, z=0.0)
-        )
-    
-def weight_grid( grid: np.ndarray, params: WeightParams)-> np.ndarray:
+        return Pose(position=Point(x=local.x, y=local.y, z=0.0), orientation=Quaternion(w=1.0, x=0.0, y=0.0, z=0.0))
+
+
+def weight_grid(grid: np.ndarray, params: WeightParams) -> np.ndarray:
     """Generates the weighting grid of an occupancy grid of a given size as a 2D Numpy Array. Will need to play with default weightings"""
 
+    # hopefully this doesn't cause pointer weirdness
+    width, height = grid.shape
 
-    #hopefully this doesn't cause pointer weirdness
-    width, height = grid.shape 
-
-    #see if these need to be changed
+    # see if these need to be changed
     x = 0
-    while (x <= width/2): 
+    while x <= width / 2:
         y = 0
-        while (y < height): 
-               #weight the bottom. this is weighted assuming the top is 0.
-                if (y < (height - (height* params.linear_ratio))):
-                    grid[x,y] += (height*params.linear_ratio-(y+1)) *  params.linear_factor
-                #weight the top bar a little. this is weighted assuming the top is 0.
-                if (y >= height - params.top_bar_size):
-                    grid[x,y] += params.top_bar_weight
-                #quadratic rating on the center
-                #change the weighting as needed
-                grid[x,y] += params.quadratic_factor * pow(float(width/2) - float(x), 2)
+        while y < height:
+            # weight the bottom. this is weighted assuming the top is 0.
+            if y < (height - (height * params.linear_ratio)):
+                grid[x, y] += (height * params.linear_ratio - (y + 1)) * params.linear_factor
+            # weight the top bar a little. this is weighted assuming the top is 0.
+            if y >= height - params.top_bar_size:
+                grid[x, y] += params.top_bar_weight
+            # quadratic rating on the center
+            # change the weighting as needed
+            grid[x, y] += params.quadratic_factor * pow(float(width / 2) - float(x), 2)
 
-                #set this to max if it's greater
-                grid[x,y] = min(grid[x,y], 100)
-                grid[width-1-x,y] = grid[x,y]
+            # set this to max if it's greater
+            grid[x, y] = min(grid[x, y], 100)
+            grid[width - 1 - x, y] = grid[x, y]
 
-                #I've just thought of something. Last year we used a matrix to store the costs. This year we're just using inflation grids.
-                y+=1
-        x+=1
+            # I've just thought of something. Last year we used a matrix to store the costs. This year we're just using inflation grids.
+            y += 1
+        x += 1
 
     return grid
