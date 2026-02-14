@@ -1,13 +1,12 @@
 import nav_utils.config
 import numpy as np
 import rclpy
+import tf2_geometry_msgs  # noqa: F401 — registers PoseStamped transform handlers
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import MapMetaData, OccupancyGrid
 from rclpy.node import Node
 from std_msgs.msg import Header
 from tf2_ros import Buffer, TransformListener
-
-import tf2_geometry_msgs  # noqa: F401 — registers PoseStamped transform handlers
 
 from .occupancy_grid_transform_impl import add_border, cv_occupancy_grid_to_ros_grid, inflate_grid
 from .occupancy_grid_trasform_config import OccupancyGridTransformConfig

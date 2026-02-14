@@ -67,4 +67,3 @@ class OccupancyGridTransformConfig:
     this frame.
     """
     frame_id: str = "odom"
-

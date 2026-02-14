@@ -118,4 +118,3 @@ def inflate_grid(grid: np.ndarray, params: InflationParams) -> np.ndarray:
         inflate(x, y)
 
     return output.astype(np.int8)
-

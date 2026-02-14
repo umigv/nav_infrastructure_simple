@@ -78,4 +78,3 @@ def test_inflate_grid():
     # outside r_soft
     assert out[3, 6] == 0
     assert out[0, 3] == 0
-
