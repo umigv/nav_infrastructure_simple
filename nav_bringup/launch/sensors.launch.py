@@ -6,8 +6,8 @@ from nav_bringup.global_config import FRAMES
 
 def generate_launch_description():
     bringup_share = FindPackageShare("nav_bringup")
-    vectornav_params = PathJoinSubstitution(
-        [bringup_share, "config", "vectornav.yaml"]
+    imu_params = PathJoinSubstitution(
+        [bringup_share, "config", "imu.yaml"]
     )
     gps_params = PathJoinSubstitution(
         [bringup_share, "config", "gps.yaml"]
@@ -22,7 +22,7 @@ def generate_launch_description():
         executable="vectornav",
         name="vectornav",
         output="screen",
-        parameters=[vectornav_params],
+        parameters=[imu_params],
     )
 
     vectornav_msgs = Node(
@@ -30,7 +30,7 @@ def generate_launch_description():
         executable="vn_sensor_msgs",
         name="vn_sensor_msgs",
         output="screen",
-        parameters=[vectornav_params],
+        parameters=[imu_params],
     )
 
     gps = Node(
