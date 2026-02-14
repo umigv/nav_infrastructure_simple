@@ -26,7 +26,7 @@ def generate_launch_description():
                 name="occupancy_grid_transform",
                 remappings=[
                     ("occupancy_grid", "occ_grid"),
-                    ("occupancy_grid_transform", "inflated_occupancy_grid"),
+                    ("transformed_occupancy_grid", "inflated_occupancy_grid"),
                 ],
             ),
             Node(package="path_tracking", executable="pure_pursuit", name="pure_pursuit"),
