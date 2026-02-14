@@ -26,13 +26,13 @@ The following describes how to run the point simulator (basic non-physics based 
 1. Publish an empty occupancy grid repeatedly:
     ```bash
     ros2 topic pub -r 1 /occ_grid nav_msgs/msg/OccupancyGrid "header:
-      frame_id: 'odom'
+      frame_id: 'base_link'
     info:
       resolution: 0.05
       width: 100
       height: 100
       origin:
-        position: {x: 0.0, y: 0.0, z: 0.0}
+        position: {x: 0.6, y: -2.5, z: 0.0}
         orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
     data: [$(python3 -c 'print(", ".join(["0"]*100*100))')]"
     ```
