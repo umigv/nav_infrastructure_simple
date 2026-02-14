@@ -31,6 +31,9 @@ def generate_launch_description():
         name="vn_sensor_msgs",
         output="screen",
         parameters=[imu_params],
+        remappings=[
+            ("vectornav/imu", "imu/raw"),
+        ],
     )
 
     gps = Node(
