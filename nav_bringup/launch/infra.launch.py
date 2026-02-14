@@ -14,9 +14,9 @@ def generate_launch_description():
         [
             simulation_arg,
             Node(
-                package="point_simulator",
-                executable="point_simulator",
-                name="point_simulator",
+                package="localization_simulator",
+                executable="localization_simulator",
+                name="localization_simulator",
                 condition=IfCondition(LaunchConfiguration("simulation")),
             ),
             Node(package="goal_selection", executable="goal_selection", name="goal_selection"),

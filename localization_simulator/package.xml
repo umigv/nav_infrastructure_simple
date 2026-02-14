@@ -1,18 +1,21 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>point_simulator</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="mdhuss413@gmail.com">maaz</maintainer>
-  <license>TODO: License declaration</license>
+  <name>localization_simulator</name>
+  <version>0.1.0</version>
+  <description>Simulated localization node</description>
+  <maintainer email="umarv-leads@umich.edu">ARV</maintainer>
+  <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>tf_transformations</depend>
-  <depend>visualization_msgs</depend>
   <depend>sensor_msgs</depend>
+  <depend>robot_localization</depend>
+  <depend>geographic_msgs</depend>
+
+  <exec_depend>nav_utils</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
