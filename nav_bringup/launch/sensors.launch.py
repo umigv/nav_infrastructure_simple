@@ -22,7 +22,7 @@ def generate_launch_description():
         executable="vectornav",
         name="vectornav",
         output="screen",
-        parameters=[imu_params],
+        parameters=[imu_params, {"frame_id": imu_frame}],
     )
 
     vectornav_msgs = Node(
@@ -38,7 +38,7 @@ def generate_launch_description():
         executable="gps_publisher",
         name="gps_publisher",
         output="screen",
-        parameters=[gps_params],
+        parameters=[gps_params, {"gps_frame_id": gps_frame}],
         remappings=[
             ("gps", "gps/raw"),
         ],
