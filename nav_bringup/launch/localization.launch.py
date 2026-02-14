@@ -57,7 +57,7 @@ def generate_launch_description():
             },
         ],
         remappings=[
-            ("odometry/filtered", "odometry/global"),
+            ("odometry/filtered", "odom/global"),
         ],
     )
 
