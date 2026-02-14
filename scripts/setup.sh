@@ -25,6 +25,9 @@ if [[ ! -d "$WS_ROOT/src" ]]; then
   exit 1
 fi
 
+echo "==> Initializing git submodules (repo)"
+git -C "$REPO_ROOT" submodule update --init --recursive
+
 echo "==> Install Python tooling deps (editable)"
 python3 -m pip install -U pip
 python3 -m pip install -e "$REPO_ROOT[tooling]"

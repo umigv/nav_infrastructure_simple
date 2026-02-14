@@ -1,0 +1,74 @@
+vectornav:
+  ros__parameters:
+    port: "/dev/ttyUSB0"
+    baud: 115200
+    reconnect_ms: 500
+    adjust_ros_timestamp: false
+    AsyncDataOutputType: 0                 # VNOFF (binary mode)
+    AsyncDataOutputFrequency: 100          # Hz: {1 2 4 5 10 20 25 40 50 100 200}
+    # Sync control
+    syncInMode: 3                          # SYNCINMODE_COUNT
+    syncInEdge: 0                          # SYNCINEDGE_RISING
+    syncInSkipFactor: 0
+    syncOutMode: 0                         # SYNCOUTMODE_NONE
+    syncOutPolarity: 0                     # SYNCOUTPOLARITY_NEGATIVE
+    syncOutSkipFactor: 0
+    syncOutPulseWidth_ns: 100000000
+    # Communication protocol control
+    serialCount: 0                         # COUNTMODE_NONE
+    serialStatus: 0                        # STATUSMODE_OFF
+    spiCount: 0                            # COUNTMODE_NONE
+    spiStatus: 0                           # STATUSMODE_OFF
+    serialChecksum: 1                      # CHECKSUMMODE_CHECKSUM
+    spiChecksum: 0                         # CHECKSUMMODE_OFF
+    errorMode: 1                           # ERRORMODE_SEND
+    # Binary output register 1
+    BO1:
+      asyncMode: 3                         # ASYNCMODE_BOTH
+      rateDivisor: 8                       # 800 / 8 = 100 Hz
+      commonField: 0x7FFF                  # all common fields
+      timeField: 0x0000                    # TIMEGROUP_NONE
+      imuField: 0x0000                     # IMUGROUP_NONE
+      gpsField: 0x0000                     # GPSGROUP_NONE (VN-100 has no GPS)
+      attitudeField: 0x0000                # ATTITUDEGROUP_NONE
+      insField: 0x0000                     # INSGROUP_NONE (VN-100 has no INS)
+      gps2Field: 0x0000                    # GPSGROUP_NONE
+    # Binary output register 2 (unused)
+    BO2:
+      asyncMode: 0                         # ASYNCMODE_NONE
+      rateDivisor: 0
+      commonField: 0x0000                  # COMMONGROUP_NONE
+      timeField: 0x0000                    # TIMEGROUP_NONE
+      imuField: 0x0000                     # IMUGROUP_NONE
+      gpsField: 0x0000                     # GPSGROUP_NONE
+      attitudeField: 0x0000                # ATTITUDEGROUP_NONE
+      insField: 0x0000                     # INSGROUP_NONE
+      gps2Field: 0x0000                    # GPSGROUP_NONE
+    # Binary output register 3 (unused)
+    BO3:
+      asyncMode: 0                         # ASYNCMODE_NONE
+      rateDivisor: 0
+      commonField: 0x0000                  # COMMONGROUP_NONE
+      timeField: 0x0000                    # TIMEGROUP_NONE
+      imuField: 0x0000                     # IMUGROUP_NONE
+      gpsField: 0x0000                     # GPSGROUP_NONE
+      attitudeField: 0x0000                # ATTITUDEGROUP_NONE
+      insField: 0x0000                     # INSGROUP_NONE
+      gps2Field: 0x0000                    # GPSGROUP_NONE
+
+vn_sensor_msgs:
+  ros__parameters:
+    # Convert from NED (Forward-Right-Down) to ENU (Right-Forward-Up)
+    use_enu: true
+    orientation_covariance: [0.01, 0.0,  0.0,
+                             0.0,  0.01, 0.0,
+                             0.0,  0.0,  0.01]
+    angular_velocity_covariance: [0.01, 0.0,  0.0,
+                                  0.0,  0.01, 0.0,
+                                  0.0,  0.0,  0.01]
+    linear_acceleration_covariance: [0.01, 0.0,  0.0,
+                                     0.0,  0.01, 0.0,
+                                     0.0,  0.0,  0.01]
+    magnetic_covariance: [0.01, 0.0,  0.0,
+                          0.0,  0.01, 0.0,
+                          0.0,  0.0,  0.01]
