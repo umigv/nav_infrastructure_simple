@@ -1,22 +1,19 @@
 from launch import LaunchDescription
+from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from launch.substitutions import PathJoinSubstitution
 from nav_bringup.global_config import FRAMES
+
 
 def generate_launch_description():
     bringup_share = FindPackageShare("nav_bringup")
-    imu_params = PathJoinSubstitution(
-        [bringup_share, "config", "imu.yaml"]
-    )
-    gps_params = PathJoinSubstitution(
-        [bringup_share, "config", "gps.yaml"]
-    )
+    imu_params = PathJoinSubstitution([bringup_share, "config", "imu.yaml"])
+    gps_params = PathJoinSubstitution([bringup_share, "config", "gps.yaml"])
 
     base_frame = FRAMES["base_frame"]
-    imu_frame  = FRAMES["imu_frame"]
-    gps_frame  = FRAMES["gps_frame"]
-    
+    imu_frame = FRAMES["imu_frame"]
+    gps_frame = FRAMES["gps_frame"]
+
     vectornav_driver = Node(
         package="vectornav",
         executable="vectornav",
@@ -96,7 +93,6 @@ def generate_launch_description():
             gps_frame,
         ],
     )
-
 
     return LaunchDescription(
         [
