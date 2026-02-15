@@ -4,9 +4,7 @@ import math
 from itertools import product
 
 import numpy as np
-from geometry_msgs.msg import Point, Pose, Quaternion
 from nav_msgs.msg import OccupancyGrid
-from nav_utils.geometry import get_yaw_radians_from_quaternion, rotate_by_yaw
 
 from .occupancy_grid_trasform_config import InflationParams
 
@@ -61,6 +59,26 @@ def cv_occupancy_grid_to_ros_grid(grid: OccupancyGrid) -> np.ndarray:
     return np.flipud(grid)
 
 
+def add_border(grid: np.ndarray) -> np.ndarray:
+    """
+    Add a 1-cell occupied border on all edges except the bottom (closest to robot).
+
+    Sets the top row, left column, and right column to 100 (occupied). The bottom row (y=0) is
+    left untouched since it is nearest to the robot. When followed by `inflate_grid`, the border
+    produces a soft falloff that discourages planning near grid edges.
+
+    Args:
+        grid: 2D occupancy grid of shape `(height, width)`.
+
+    Returns:
+        The same grid array, modified in place.
+    """
+    grid[-1, :] = 100  # top row
+    grid[0, :] = 100  # bottom row
+    grid[:, -1] = 100  # right column
+    return grid
+
+
 def inflate_grid(grid: np.ndarray, params: InflationParams) -> np.ndarray:
     """
     Inflate obstacles in a 2D occupancy grid.
@@ -100,40 +118,3 @@ def inflate_grid(grid: np.ndarray, params: InflationParams) -> np.ndarray:
         inflate(x, y)
 
     return output.astype(np.int8)
-
-
-def compute_origin_pose(
-    odom: Pose | None, robot_forward_offset_m: float, grid_height_cells: int, resolution: float
-) -> Pose:
-    """
-    Compute the published OccupancyGrid origin pose.
-
-    The returned pose corresponds to `OccupancyGrid.info.origin`: the world pose of the grid's (0, 0) cell (i.e., the
-    grid's lower-left corner in the grid's own coordinate system).
-
-    This transform assumes the grid is:
-    - shifted `robot_forward_offset_m` meters forward of the robot along +x
-    - centered laterally on the robot, so the origin is `height/2` cells to the right (negative y) of the robot
-
-    Args:
-        odom: Robot pose in the target frame. If None, the origin is assumed to be (0, 0, 0).
-        robot_forward_offset_m: Forward distance (meters) from the robot to the grid origin along +x.
-        grid_height_cells: Grid height (cells), used to center the grid about the robot in y.
-        resolution: Cell size (meters/cell).
-
-    Returns:
-        A `geometry_msgs/msg/Pose` suitable for `OccupancyGrid.info.origin`.
-    """
-
-    local = Point(x=robot_forward_offset_m, y=-grid_height_cells * resolution / 2.0, z=0.0)
-
-    if odom is not None:
-        yaw = get_yaw_radians_from_quaternion(odom.orientation)
-        rotated = rotate_by_yaw(local, yaw)
-
-        return Pose(
-            position=Point(x=odom.position.x + rotated.x, y=odom.position.y + rotated.y, z=0.0),
-            orientation=odom.orientation,
-        )
-    else:
-        return Pose(position=Point(x=local.x, y=local.y, z=0.0), orientation=Quaternion(w=1.0, x=0.0, y=0.0, z=0.0))

@@ -1,11 +1,14 @@
 import nav_utils.config
 import numpy as np
 import rclpy
-from nav_msgs.msg import MapMetaData, OccupancyGrid, Odometry
+import tf2_geometry_msgs  # noqa: F401 — registers PoseStamped transform handlers
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import MapMetaData, OccupancyGrid
 from rclpy.node import Node
 from std_msgs.msg import Header
+from tf2_ros import Buffer, TransformListener
 
-from .occupancy_grid_transform_impl import compute_origin_pose, cv_occupancy_grid_to_ros_grid, inflate_grid
+from .occupancy_grid_transform_impl import add_border, cv_occupancy_grid_to_ros_grid, inflate_grid
 from .occupancy_grid_trasform_config import OccupancyGridTransformConfig
 
 
@@ -15,31 +18,30 @@ class OccupancyGridTransform(Node):
 
         self.config: OccupancyGridTransformConfig = nav_utils.config.load(self, OccupancyGridTransformConfig)
 
-        self._odom: Odometry | None = None
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
         self.create_subscription(OccupancyGrid, "occupancy_grid", self.occupancy_grid_callback, 10)
-        self.create_subscription(Odometry, "odom", self.odom_callback, 10)
 
-        self.publisher = self.create_publisher(OccupancyGrid, "occupancy_grid_transform", 10)
-
-    def odom_callback(self, msg: Odometry) -> None:
-        self._odom = msg
+        self.publisher = self.create_publisher(OccupancyGrid, "transformed_occupancy_grid", 10)
 
     def occupancy_grid_callback(self, msg: OccupancyGrid) -> None:
+        try:
+            origin_raw = PoseStamped(header=Header(frame_id=msg.header.frame_id), pose=msg.info.origin)
+            origin_transformed = self.tf_buffer.transform(origin_raw, self.config.frame_id).pose
+        except Exception as e:
+            self.get_logger().error(f"TF {msg.header.frame_id}->{self.config.frame_id} unavailable, skipping: {e}")
+            return
+
         grid = cv_occupancy_grid_to_ros_grid(msg)
-        inflated_grid = inflate_grid(grid, self.config.inflation_params)
+        bordered_grid = add_border(grid)
+        inflated_grid = inflate_grid(bordered_grid, self.config.inflation_params)
         height, width = grid.shape
-        origin = compute_origin_pose(
-            odom=self._odom.pose.pose if self._odom is not None else None,
-            robot_forward_offset_m=self.config.robot_forward_offset_m,
-            grid_height_cells=height,
-            resolution=msg.info.resolution,
-        )
 
         self.publisher.publish(
             OccupancyGrid(
-                header=Header(frame_id=self.config.grid_frame_id),
-                info=MapMetaData(resolution=msg.info.resolution, width=width, height=height, origin=origin),
+                header=Header(frame_id=self.config.frame_id),
+                info=MapMetaData(resolution=msg.info.resolution, width=width, height=height, origin=origin_transformed),
                 data=inflated_grid.astype(np.int8).reshape(-1).tolist(),
             )
         )

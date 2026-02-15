@@ -66,11 +66,4 @@ class OccupancyGridTransformConfig:
     All grid coordinates and the computed origin pose are expressed in
     this frame.
     """
-    grid_frame_id: str = "odom"
-
-    """Forward offset (in meters) from the robot to the near edge of the grid.
-
-    Used when computing the grid origin. The grid is assumed to be centered laterally on the robot (+y) and to begin 
-    `robot_forward_offset_m` meters in front of the robot along +x.
-    """
-    robot_forward_offset_m: float = 0.60
+    frame_id: str = "odom"
