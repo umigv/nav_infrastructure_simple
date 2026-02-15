@@ -22,6 +22,8 @@ setup(
         ],
     },
     entry_points={
-        "console_scripts": [],
+        "console_scripts": [
+            "autonav_goal_selection = autonav_goal_selection.autonav_goal_selection:main",
+        ],
     },
 )
