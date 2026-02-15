@@ -111,7 +111,7 @@ ruff format --check "${PKG_DIRS[@]}"
 echo "==> Ruff lint"
 ruff check "${PKG_DIRS[@]}"
 
-MYPYPATH="$(printf "%s:" "${PKG_DIRS[@]}")"
+MYPYPATH="$(printf "%s:" "${ALL_PKG_DIRS[@]}")"
 export MYPYPATH="${MYPYPATH%:}"
 
 echo "==> mypy (${#PKG_DIRS[@]} packages)"

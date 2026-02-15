@@ -58,7 +58,7 @@ def find_closest_drivable_point(
     Returns:
         The nearest drivable point, or None if none exists within the radius.
     """
-    if grid.state(robot_position).is_drivable:
+    if grid.state(robot_position).isDrivable:
         return robot_position
 
     visited: set[int] = {grid.hash_key(robot_position)}
@@ -76,10 +76,10 @@ def find_closest_drivable_point(
             if distance(neighbor, robot_position) > max_search_radius:
                 continue
 
-            if grid.state(neighbor).is_drivable:
+            if grid.state(neighbor).isDrivable:
                 return neighbor
 
-            if grid.state(neighbor).is_unknown:
+            if grid.state(neighbor).isUnknown:
                 search_container.append(neighbor)
 
     return None
@@ -127,7 +127,7 @@ def generate_path(grid: WorldOccupancyGrid, start: Point, goal: Point) -> list[P
             break
 
         for neighbor in grid.neighbors8(current_point):
-            if not grid.state(neighbor).is_drivable:
+            if not grid.state(neighbor).isDrivable:
                 continue
 
             neighbor_key = grid.hash_key(neighbor)
@@ -144,9 +144,9 @@ def generate_path(grid: WorldOccupancyGrid, start: Point, goal: Point) -> list[P
         return None
 
     backtrace: list[Point] = []
-    current_key: int | None = best_goal_key
-    while current_key != None:
-        backtrace.append(point_of[current_key])
-        current_key = came_from[current_key]
+    backtrace_key: int | None = best_goal_key
+    while backtrace_key is not None:
+        backtrace.append(point_of[backtrace_key])
+        backtrace_key = came_from[backtrace_key]
 
     return list(reversed(backtrace))

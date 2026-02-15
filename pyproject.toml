@@ -99,7 +99,10 @@ module = [
     "ament_pep257.*",
 
     "tf2_ros.*",
+    "tf2_geometry_msgs.*",
     "tf_transformations.*",
+    "geographic_msgs.*",
+    "robot_localization.*",
 ]
 ignore_missing_imports = true
 disable_error_code = ["attr-defined"]

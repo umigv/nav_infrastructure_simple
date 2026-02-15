@@ -85,6 +85,9 @@ class GoalSelection(Node):
             return None
 
     def _advance_waypoint_if_reached(self) -> None:
+        if self._odometry is None:
+            return
+
         robot_position = self._odometry.pose.pose.position
         waypoint = self._transform_map_to_world(self._waypoints[self._current_waypoint_index])
         if waypoint is None:

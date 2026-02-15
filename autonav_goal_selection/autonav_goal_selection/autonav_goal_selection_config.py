@@ -18,12 +18,12 @@ class AutonavGoalSelectionConfig:
     waypoint_reached_threshold: Distance (meters) within which a waypoint is considered reached.
     """
 
+    waypoints_file_path: str
+    goal_selection_params: GoalSelectionParams
     map_frame_id: str = "map"
     world_frame_id: str = "world"
     goal_publish_period_s: float = 2.0
     waypoint_reached_threshold: float = 1.0
-    waypoints_file_path: str
-    goal_selection_params: GoalSelectionParams
 
     def __post_init__(self):
         if self.goal_publish_period_s <= 0:

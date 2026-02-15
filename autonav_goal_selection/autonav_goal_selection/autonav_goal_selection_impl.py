@@ -24,10 +24,11 @@ def select_goal(
     """
 
     def heuristic(point: Point) -> float:
-        if not grid.state(point).is_drivable:
+        if not grid.state(point).isDrivable:
             return -math.inf
 
         # TODO: implement a heuristic
+        return 0.0
 
     best_point = max(grid.inBoundPoints(), key=heuristic)
     return best_point if heuristic(best_point) > -math.inf else None
