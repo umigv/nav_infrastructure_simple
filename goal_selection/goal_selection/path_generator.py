@@ -180,22 +180,83 @@ def has_line_of_sight(
     return True
 
 
-def generate_path_occupancy_grid_indices(
-    goal_selection_node: Node,
+def find_best_goal_index(
     occupancy_grid: OccupancyGrid,
     start_index: OccupancyGridIndex,
     robot_pose: Pose,
     waypoint_meters: Point,
+) -> OccupancyGridIndex:
+    """
+    DFS through all reachable drivable cells starting from start_index and
+    return the one closest (in meters) to the waypoint.
+    """
+    best_index = start_index
+    best_distance = index_cost(
+        occupancy_grid_resolution=occupancy_grid.info.resolution,
+        index=start_index,
+        robot_pose=robot_pose,
+        waypoint_meters=waypoint_meters,
+    )
+
+    visited: set[OccupancyGridIndex] = {start_index}
+    stack: list[OccupancyGridIndex] = [start_index]
+
+    while stack:
+        current = stack.pop()
+
+        for dy, dx in itertools.product([-1, 0, 1], repeat=2):
+            if dy == 0 and dx == 0:
+                continue
+
+            neighbor = OccupancyGridIndex(
+                y=current.y + dy,
+                x=current.x + dx,
+            )
+
+            if neighbor in visited:
+                continue
+
+            if is_index_out_of_bounds(occupancy_grid, neighbor):
+                continue
+
+            if index_occupancy_grid(occupancy_grid, neighbor) != DRIVABLE_CELL_VALUE:
+                continue
+
+            visited.add(neighbor)
+            stack.append(neighbor)
+
+            distance = index_cost(
+                occupancy_grid_resolution=occupancy_grid.info.resolution,
+                index=neighbor,
+                robot_pose=robot_pose,
+                waypoint_meters=waypoint_meters,
+            )
+
+            if distance < best_distance:
+                best_distance = distance
+                best_index = neighbor
+
+    return best_index
+
+
+def generate_path_occupancy_grid_indices(
+    goal_selection_node: Node,
+    occupancy_grid: OccupancyGrid,
+    start_index: OccupancyGridIndex,
+    goal_index: OccupancyGridIndex,
+    robot_pose: Pose,
+    waypoint_meters: Point,
 ):
     """
-    Generate a good path for the robot to follow towards the goal using the Theta*
+    Generate a good path for the robot to follow towards goal_index using the Theta*
     search algorithm (any-angle variant of A*).
     https://en.wikipedia.org/wiki/Theta*
 
     Theta* extends A* by checking line-of-sight from a node's grandparent,
     producing shorter, smoother paths that are not constrained to grid edges.
 
-    Uses occupancy grid indices as the coordinate system.
+    Uses occupancy grid indices as the coordinate system. Early-exits once
+    goal_index is expanded.
     """
     came_from: dict[OccupancyGridIndex, OccupancyGridIndex] = {}
     cost_so_far: dict[OccupancyGridIndex, float] = {}
@@ -218,9 +279,6 @@ def generate_path_occupancy_grid_indices(
 
     came_from[start_index] = null_occ_grid_index
 
-    best_goal_index = start_index
-    best_goal_distance = start_heuristic
-
     while len(priority_queue) > 0:
         current_item = heapq.heappop(priority_queue)
         current_index = current_item.index
@@ -230,21 +288,11 @@ def generate_path_occupancy_grid_indices(
             continue
         closed.add(current_index)
 
-        # Get the actual cost_so_far for this index
+        # Early exit: we've expanded the goal node
+        if current_index == goal_index:
+            break
+
         current_cost = cost_so_far.get(current_index, float('inf'))
-
-        # Check if this index is closer to waypoint than current best
-        distance_to_waypoint = index_cost(
-            occupancy_grid_resolution=occupancy_grid.info.resolution,
-            index=current_index,
-            robot_pose=robot_pose,
-            waypoint_meters=waypoint_meters
-        )
-
-        if distance_to_waypoint < best_goal_distance:
-            best_goal_index = current_index
-            best_goal_distance = distance_to_waypoint
-
         parent = came_from[current_index]
 
         for dy, dx in itertools.product([-1, 0, 1], repeat=2):
@@ -297,10 +345,9 @@ def generate_path_occupancy_grid_indices(
                 priority = new_cost + heuristic
                 heapq.heappush(priority_queue, IndexAndCost(cost=priority, index=neighbor))
 
-    # In order to construct a path from the search process, start from the best node
-    # within the occupancy grid, and work backwards until you reach the start node. 
+    # Construct the path by backtracing from the goal to the start.
     backtrace: list[OccupancyGridIndex] = []
-    current_backtrace_index = dataclasses.replace(best_goal_index)
+    current_backtrace_index = dataclasses.replace(goal_index)
     while came_from[current_backtrace_index] != null_occ_grid_index:
         backtrace.append(current_backtrace_index)
         current_backtrace_index = came_from[current_backtrace_index]
@@ -335,7 +382,7 @@ def generate_path_occupancy_grid_indices(
 
         interpolated.append(pt)
 
-    goal_selection_node.get_logger().info(f"Generated path of length {len(interpolated)} from {start_index} to {best_goal_index}!")
+    goal_selection_node.get_logger().info(f"Generated path of length {len(interpolated)} from {start_index} to {goal_index}!")
 
     return interpolated
 
@@ -351,6 +398,13 @@ def generate_path(
     """
     start_point = find_closest_drivable_point(occupancy_grid)
     assert start_point is not None, "Could not find drivable area in front of robot!"
+
+    goal_index = find_best_goal_index(
+        occupancy_grid=occupancy_grid,
+        start_index=start_point,
+        robot_pose=robot_pose,
+        waypoint_meters=waypoint_meters,
+    )
 
     return Path(
         header=Header(
@@ -373,6 +427,7 @@ def generate_path(
                 goal_selection_node=goal_selection_node,
                 occupancy_grid=occupancy_grid,
                 start_index=start_point,
+                goal_index=goal_index,
                 robot_pose=robot_pose,
                 waypoint_meters=waypoint_meters
             )
