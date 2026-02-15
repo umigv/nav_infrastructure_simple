@@ -84,6 +84,7 @@ module = [
     "builtin_interfaces.*",
     "std_msgs.*",
     "geometry_msgs.*",
+    "geographic_msgs.*",
     "nav_msgs.*",
     "sensor_msgs.*",
     "std_srvs.*",
@@ -100,8 +101,10 @@ module = [
 
     "tf2_ros.*",
     "tf_transformations.*",
-    "tf2_geometry_msgs.*",
     "tf2_geometry_msgs",
+
+    "robot_localization.*",
+    "pyproj"
 ]
 ignore_missing_imports = true
 disable_error_code = ["attr-defined"]
