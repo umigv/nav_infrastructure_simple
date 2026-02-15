@@ -39,7 +39,7 @@ def index_occupancy_grid(occupancy_grid: OccupancyGrid, index: OccupancyGridInde
 def is_index_out_of_bounds(occupancy_grid: OccupancyGrid, index: OccupancyGridIndex) -> bool:
     """Calculate whether or not index is out of bounds"""
     # Convert to bottom of left of occupancy origin
-    adjusted_y = -index.y + occupancy_grid.info.height//2
+    adjusted_y = index.y + occupancy_grid.info.height//2
     adjusted_x = index.x + int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution)
 
     return adjusted_y < 0 \
