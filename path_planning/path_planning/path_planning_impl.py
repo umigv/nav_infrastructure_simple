@@ -4,9 +4,8 @@ from collections import deque
 from dataclasses import dataclass, field
 
 from geometry_msgs.msg import Point
-
-from nav_utils.nav_utils.geometry import distance
-from nav_utils.nav_utils.world_occupancy_grid import WorldOccupancyGrid
+from nav_utils.geometry import distance
+from nav_utils.world_occupancy_grid import WorldOccupancyGrid
 
 
 @dataclass(order=True)
@@ -69,10 +68,10 @@ def find_closest_drivable_point(
         current = search_container.popleft()
 
         for neighbor in grid.neighbors_forward(current):
-            neighor_key = grid.hash_key(neighbor)
-            if neighor_key in visited:
+            neighbor_key = grid.hash_key(neighbor)
+            if neighbor_key in visited:
                 continue
-            visited.add(neighor_key)
+            visited.add(neighbor_key)
 
             if distance(neighbor, robot_position) > max_search_radius:
                 continue
