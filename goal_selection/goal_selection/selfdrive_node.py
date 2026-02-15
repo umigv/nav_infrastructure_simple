@@ -47,7 +47,7 @@ class GoalSelectionNode(Node):
 
         self.create_subscription(
             PointStamped,
-            "/goal_point",
+            "/waypoint/self_drive",
             self.goal_point_callback,
             10
         )

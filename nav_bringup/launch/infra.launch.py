@@ -44,7 +44,7 @@ def generate_launch_description():
                 executable="occupancy_grid_transform",
                 name="occupancy_grid_transform",
                 remappings=[
-                    ("occupancy_grid", "occ_grid"),
+                    ("occ_grid/self_drive", "occ_grid"),
                     ("transformed_occupancy_grid", "inflated_occupancy_grid"),
                 ],
             ),
