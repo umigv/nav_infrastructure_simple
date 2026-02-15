@@ -74,7 +74,7 @@ def add_border(grid: np.ndarray) -> np.ndarray:
         The same grid array, modified in place.
     """
     grid[-1, :] = 100  # top row
-    grid[:, 0] = 100  # left column
+    grid[0, :] = 100  # bottom row
     grid[:, -1] = 100  # right column
     return grid
 
