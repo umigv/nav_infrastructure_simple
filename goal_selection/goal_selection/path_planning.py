@@ -1,37 +1,70 @@
-from dataclasses import dataclass, field
-from collections import deque
 import heapq
+import math
+from collections import deque
+from dataclasses import dataclass, field
+
 from geometry_msgs.msg import Point
+
 from nav_utils.nav_utils.geometry import distance
-from nav_utils.nav_utils.world_occupancy_grid import WorldOccupancyGrid 
+from nav_utils.nav_utils.world_occupancy_grid import WorldOccupancyGrid
+
 
 @dataclass(order=True)
 class KeyAndCost:
     """Store the coordinates to a node and the cost of that node."""
+
     cost: float
     key: int = field(compare=False)
 
 
-def find_closest_drivable_point(
-    grid: WorldOccupancyGrid, 
-    robot_position: Point, 
-    max_search_radius: float
-) -> Point | None:
-    """
-    The robot is in unknown space in the occupancy grid, meaning we don't know if its
-    current location and the location around it is drivable. 
-    
-    To account for this, we search for the closest drivable node, starting from the node
-    containing the robot.
+def interpolate_points(start: Point, end: Point, resolution: float) -> list[Point]:
+    """Linearly interpolate between two points at a given resolution.
 
-    Used to traverse the area between the robot's real position and where its FoV begins.
+    Generates evenly spaced points from start to end (inclusive of both).
+
+    Args:
+        start: Starting point.
+        end: Ending point.
+        resolution: Distance between consecutive interpolated points.
+    Returns:
+        List of interpolated points from start to end.
+    """
+    total_distance = distance(start, end)
+    num_steps = math.ceil(total_distance / resolution)
+
+    return [
+        Point(
+            x=start.x + (end.x - start.x) * i / num_steps,
+            y=start.y + (end.y - start.y) * i / num_steps,
+            z=0.0,
+        )
+        for i in range(num_steps + 1)
+    ]
+
+
+def find_closest_drivable_point(
+    grid: WorldOccupancyGrid, robot_position: Point, max_search_radius: float
+) -> Point | None:
+    """BFS from the robot position to find the nearest drivable cell.
+
+    The robot is in unknown space in the occupancy grid, meaning we don't know if its current location and the location
+    around it is drivable. To account for this, we search for the closest drivable point, starting from the robot.
+
+    Args:
+        grid: World-coordinate occupancy grid.
+        robot_position: Robot position in world coordinates.
+        max_search_radius: Maximum distance (meters) from robot_position to
+            search. Prevents unbounded expansion since the grid returns
+            UNKNOWN for out-of-bounds points.
+    Returns:
+        The nearest drivable point, or None if none exists within the radius.
     """
     if grid.state(robot_position).is_drivable:
         return robot_position
 
     visited: set[int] = {grid.hash_key(robot_position)}
     search_container: deque[Point] = deque([robot_position])
-    
+
     while len(search_container) > 0:
         current = search_container.popleft()
 
@@ -44,18 +77,29 @@ def find_closest_drivable_point(
             if distance(neighbor, robot_position) > max_search_radius:
                 continue
 
-            if grid.state(neighbor).is_driveable:
+            if grid.state(neighbor).is_drivable:
                 return neighbor
-            
+
             if grid.state(neighbor).is_unknown:
                 search_container.append(neighbor)
-    
+
     return None
 
+
 def generate_path(grid: WorldOccupancyGrid, start: Point, goal: Point) -> list[Point] | None:
-    """
-    Generate a good path for the robot to follow towards the goal using the A* search
-    algorithm https://en.wikipedia.org/wiki/A*_search_algorithm.
+    """Generate a good path for the robot to follow towards the goal using the A* search algorithm.
+    https://en.wikipedia.org/wiki/A*_search_algorithm.
+
+    Both start and goal should be drivable cells within the grid. If the goal is unreachable (e.g. blocked by
+    obstacles), the path leads to the closest reachable cell instead.
+
+    Args:
+        grid: World-coordinate occupancy grid.
+        start: Drivable start point in world coordinates.
+        goal: Drivable goal point in world coordinates.
+    Returns:
+        List of world-coordinate points from start to goal (or closest
+        reachable point), or None if no drivable cells are reachable.
     """
     start_key = grid.hash_key(start)
     goal_key = grid.hash_key(goal)
@@ -90,7 +134,7 @@ def generate_path(grid: WorldOccupancyGrid, start: Point, goal: Point) -> list[P
             neighbor_key = grid.hash_key(neighbor)
             neighbor_cost = cost_so_far[current_key] + distance(current_point, neighbor)
 
-            if neighbor not in cost_so_far or neighbor_cost < cost_so_far[neighbor]:
+            if neighbor_key not in cost_so_far or neighbor_cost < cost_so_far[neighbor_key]:
                 cost_so_far[neighbor_key] = neighbor_cost
                 came_from[neighbor_key] = current_key
                 point_of[neighbor_key] = neighbor
@@ -106,4 +150,4 @@ def generate_path(grid: WorldOccupancyGrid, start: Point, goal: Point) -> list[P
         backtrace.append(point_of[current_key])
         current_key = came_from[current_key]
 
-    return reversed(backtrace)
+    return list(reversed(backtrace))
