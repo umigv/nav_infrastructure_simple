@@ -139,6 +139,47 @@ def index_cost(
         + (index_meters.y - waypoint_meters.y) ** 2
     )
 
+def has_line_of_sight(
+    occupancy_grid: OccupancyGrid,
+    a: OccupancyGridIndex,
+    b: OccupancyGridIndex,
+) -> bool:
+    """
+    Check whether every cell along the straight line from a to b is drivable,
+    using Bresenham's line algorithm.
+    """
+    y0, x0 = a.y, a.x
+    y1, x1 = b.y, b.x
+
+    dy = abs(y1 - y0)
+    dx = abs(x1 - x0)
+    sy = 1 if y0 < y1 else -1
+    sx = 1 if x0 < x1 else -1
+    err = dx - dy
+
+    while True:
+        idx = OccupancyGridIndex(y=y0, x=x0)
+
+        if is_index_out_of_bounds(occupancy_grid, idx):
+            return False
+
+        if index_occupancy_grid(occupancy_grid, idx) != DRIVABLE_CELL_VALUE:
+            return False
+
+        if y0 == y1 and x0 == x1:
+            break
+
+        e2 = 2 * err
+        if e2 > -dy:
+            err -= dy
+            x0 += sx
+        if e2 < dx:
+            err += dx
+            y0 += sy
+
+    return True
+
+
 def generate_path_occupancy_grid_indices(
     goal_selection_node: Node,
     occupancy_grid: OccupancyGrid,
@@ -147,13 +188,18 @@ def generate_path_occupancy_grid_indices(
     waypoint_meters: Point,
 ):
     """
-    Generate a good path for the robot to follow towards the goal using the A* search
-    algorithm https://en.wikipedia.org/wiki/A*_search_algorithm.
-    
+    Generate a good path for the robot to follow towards the goal using the Theta*
+    search algorithm (any-angle variant of A*).
+    https://en.wikipedia.org/wiki/Theta*
+
+    Theta* extends A* by checking line-of-sight from a node's grandparent,
+    producing shorter, smoother paths that are not constrained to grid edges.
+
     Uses occupancy grid indices as the coordinate system.
     """
     came_from: dict[OccupancyGridIndex, OccupancyGridIndex] = {}
     cost_so_far: dict[OccupancyGridIndex, float] = {}
+    closed: set[OccupancyGridIndex] = set()
     priority_queue: list[IndexAndCost] = []
 
     cost_so_far[start_index] = 0.0
@@ -165,7 +211,7 @@ def generate_path_occupancy_grid_indices(
     )
     heapq.heappush(priority_queue, IndexAndCost(cost=start_heuristic, index=start_index))
 
-    # Used as an placeholder for algorithms that use occupancy grid indices since it 
+    # Used as a placeholder for algorithms that use occupancy grid indices since it
     # is not a possible value to reach.
 
     null_occ_grid_index = OccupancyGridIndex(y=0, x=int(ROBOT_FORWARDS_BACKWARDS_POSITION_RELATIVE_TO_BOTTOM_OF_CAMERA_VIEW / occupancy_grid.info.resolution) - 1)
@@ -178,6 +224,11 @@ def generate_path_occupancy_grid_indices(
     while len(priority_queue) > 0:
         current_item = heapq.heappop(priority_queue)
         current_index = current_item.index
+
+        # Skip already-expanded nodes (duplicates in the priority queue)
+        if current_index in closed:
+            continue
+        closed.add(current_index)
 
         # Get the actual cost_so_far for this index
         current_cost = cost_so_far.get(current_index, float('inf'))
@@ -194,6 +245,8 @@ def generate_path_occupancy_grid_indices(
             best_goal_index = current_index
             best_goal_distance = distance_to_waypoint
 
+        parent = came_from[current_index]
+
         for dy, dx in itertools.product([-1, 0, 1], repeat=2):
             if dy == 0 and dx == 0:
                 continue
@@ -206,21 +259,35 @@ def generate_path_occupancy_grid_indices(
             if is_index_out_of_bounds(occupancy_grid, neighbor):
                 continue
 
+            if neighbor in closed:
+                continue
+
             # Cell isn't drivable
             if index_occupancy_grid(occupancy_grid, neighbor) != DRIVABLE_CELL_VALUE:
                 continue
 
-            # Edge cost distance between indices (1 for straight, sqrt(2) for diagonal)
-            edge_cost = math.sqrt(dy * dy + dx * dx) * occupancy_grid.info.resolution
-            
-            new_cost = current_cost + edge_cost
+            # --- Theta* line-of-sight check ---
+            # Try to connect directly from the grandparent (parent of current)
+            # to the neighbor, skipping current for a shorter any-angle path.
+            if parent != null_occ_grid_index and has_line_of_sight(occupancy_grid, parent, neighbor):
+                parent_cost = cost_so_far[parent]
+                los_dist = math.sqrt(
+                    (neighbor.y - parent.y) ** 2 + (neighbor.x - parent.x) ** 2
+                ) * occupancy_grid.info.resolution
+                new_cost = parent_cost + los_dist
+                new_parent = parent
+            else:
+                # Fall back to normal A*-style grid edge cost
+                edge_cost = math.sqrt(dy * dy + dx * dx) * occupancy_grid.info.resolution
+                new_cost = current_cost + edge_cost
+                new_parent = current_index
 
             # Unexplored node or we found a better way to get to the node
             if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
                 cost_so_far[neighbor] = new_cost
-                came_from[neighbor] = current_index
-                
-                # A* priority: cost_so_far + heuristic (distance to waypoint)
+                came_from[neighbor] = new_parent
+
+                # Priority: cost_so_far + heuristic (distance to waypoint)
                 heuristic = index_cost(
                     occupancy_grid_resolution=occupancy_grid.info.resolution,
                     index=neighbor,
@@ -239,6 +306,8 @@ def generate_path_occupancy_grid_indices(
     while came_from[current_backtrace_index] != null_occ_grid_index:
         backtrace.append(current_backtrace_index)
         current_backtrace_index = came_from[current_backtrace_index]
+
+    goal_selection_node.get_logger().info(f"Generated path of length {len(backtrace)} from {start_index} to {best_goal_index}!")
 
     return reversed(backtrace)
 
