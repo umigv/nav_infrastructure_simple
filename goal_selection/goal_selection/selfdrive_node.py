@@ -4,13 +4,15 @@ import math
 import pathlib
 import sys
 from typing import Any
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, PointStamped, PoseStamped, Pose, Quaternion
 from goal_selection import path_generator
 from nav_msgs.msg import Odometry, Path, OccupancyGrid
 import rclpy
 from std_msgs.msg import Header
 from visualization_msgs.msg import Marker
 from rclpy.node import Node, Publisher
+import tf2_geometry_msgs  # noqa: F401 – registers PoseStamped transform handlers
+from tf2_ros import Buffer, TransformListener
 
 # How often a path is generated and published, in seconds.
 PATH_PUBLISH_PERIOD_SECONDS = 2
@@ -18,16 +20,23 @@ PATH_PUBLISH_PERIOD_SECONDS = 2
 class GoalSelectionNode(Node):
     # The most recent odometry for the robot
     odometry: Odometry | None = None
-    # The current goal position in meters with origin = robot start point
+    # The current goal position in meters in the odometry frame
     waypoint_meters: Point | None = None
     # The most recent occupancy grid, inflated by the inflation layer node
     inflated_occupancy_grid: OccupancyGrid | None = None
     # The publisher for generated paths
     path_publisher: Publisher
+    # TF buffer and listener for coordinate transforms
+    tf_buffer: Buffer
+    tf_listener: TransformListener
 
     def __init__(self):
         """Initialize goal selection node."""
         super().__init__('goal_selection')
+
+        # Initialize TF buffer and listener for coordinate transforms
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
         self.create_subscription(
             Odometry,
@@ -37,7 +46,7 @@ class GoalSelectionNode(Node):
         )
 
         self.create_subscription(
-            Point,
+            PointStamped,
             "/goal_point",
             self.goal_point_callback,
             10
@@ -69,9 +78,12 @@ class GoalSelectionNode(Node):
         self.odometry = new_odometry
 
     def publish_waypoint_marker(self):
+        if self.odometry is None:
+            return
+            
         waypoint_marker = Marker()
 
-        waypoint_marker.header.frame_id = 'odom'
+        waypoint_marker.header.frame_id = self.odometry.header.frame_id
         waypoint_marker.header.stamp = self.get_clock().now().to_msg()
         waypoint_marker.ns = 'goal_selection'
         waypoint_marker.id = 0
@@ -90,19 +102,39 @@ class GoalSelectionNode(Node):
 
         self.waypoint_marker_publisher.publish(waypoint_marker)
 
-    def goal_point_callback(self, new_goal_point: Point):
+    def goal_point_callback(self, new_goal_point: PointStamped):
         """
-        Consumes the latest goal point data (already in meters).
+        Consumes the latest goal point data and transforms it to the odometry frame.
         """
         if self.odometry is None:
             self.waypoint_meters = None
             return
 
-        self.waypoint_meters = Point(
-            x=new_goal_point.x,
-            y=new_goal_point.y,
-            z=new_goal_point.z
-        )
+        target_frame = self.odometry.header.frame_id
+        source_frame = new_goal_point.header.frame_id
+
+        # Transform the goal point to the odometry frame
+        try:
+            goal_pose_stamped = PoseStamped(
+                header=new_goal_point.header,
+                pose=Pose(
+                    position=new_goal_point.point,
+                    orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
+                )
+            )
+            
+            goal_transformed = self.tf_buffer.transform(goal_pose_stamped, target_frame)
+            
+            self.waypoint_meters = Point(
+                x=goal_transformed.pose.position.x,
+                y=goal_transformed.pose.position.y,
+                z=goal_transformed.pose.position.z
+            )
+            
+        except Exception as e:
+            self.get_logger().error(f"TF {source_frame}->{target_frame} unavailable, skipping goal point: {e}")
+            self.waypoint_meters = None
+            return
 
         self.publish_waypoint_marker()
 
@@ -112,7 +144,8 @@ class GoalSelectionNode(Node):
         )
 
         self.get_logger().info(
-            f"New goal point: {new_goal_point}\n" + 
+            f"New goal point ({source_frame} frame): {new_goal_point.point}\n" + 
+            f"Transformed waypoint ({target_frame} frame): {self.waypoint_meters}\n" +
             f"Dist to waypoint: {dist_to_waypoint}"
         )
 
