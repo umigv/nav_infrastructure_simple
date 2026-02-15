@@ -38,15 +38,13 @@ Run each of these commands in separate terminals.
         orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
     data: [$(python3 -c 'print(", ".join(["0"]*100*100))')]"
     ```
-2. Run navigation stack with simulation enabled:
+2. Run simulated localization:
     ```bash
-    ros2 launch nav_bringup infra.launch.py simulation:=true
+    ros2 launch nav_bringup localization.launch.py simulation:=true
     ```
-3. Publish initial gps coords
+3. Run nav stack:
     ```bash
-    ros2 topic pub /gps_coords sensor_msgs/msg/NavSatFix "{header: {frame_id: 'gps'}, status: {status: 0, service: 1}, latitude: 42.294621, longitude: -83.708112, altitude: 10.0, position_covariance: [0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0], position_covariance_type: 0}" --once
+    ros2 launch nav_bringup infra.launch.py
     ```
-
-Feel free to modify the initial gps coords. 
 
 Keep in mind that full occupancy grid simulation is likely infeasible, since the occupancy grid needs to "turn" with the robot.
