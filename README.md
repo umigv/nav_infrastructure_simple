@@ -3,16 +3,17 @@
 ## Documentation
 
 ## Warning: Intellisense
-When building, make sure you include `--symlink-install`. Otherwise, when control clicking a dependency in VSCode, it will take you to a copy of the dependency, instead of the actual source file. For example:
+When building, make sure you include `--symlink-install`. Otherwise, when control clicking a dependency in VSCode, it 
+will take you to a copy of the dependency, instead of the actual source file. For example:
 
 ```bash
 colcon build --symlink-install
 ```
 
 ### Dependencies
-This repo only has one dependecy: `pyproj`. You can install it with
+You can install all dependencies of nav by running
 ```bash
-pip install pyproj
+./scripts/setup.sh
 ```
 
 ### Simulation
@@ -21,7 +22,8 @@ You can run simulation by:
 2. Running this stack with simulation enabled
 3. Publishing initial gps coordinates
 
-The following describes how to run the point simulator (basic non-physics based simulator with an empty occupancy grid). Run each of these commands in separate terminals.
+The following describes how to run the point simulator (basic non-physics based simulator with an empty occupancy grid). 
+Run each of these commands in separate terminals.
 
 1. Publish an empty occupancy grid repeatedly:
     ```bash
