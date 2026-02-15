@@ -31,8 +31,8 @@ class LocalizationSimulator(Node):
 
         self.config: LocalizationSimulatorConfig = nav_utils.config.load(self, LocalizationSimulatorConfig)
 
-        zone_number = min(60, math.floor((self.config.datum_longitude + 180) / 6) + 1)
-        epsg_code = f"EPSG:{zone_number + (32600 if self.config.datum_latitude >= 0 else 32700)}"
+        zone_number = min(60, math.floor((self.config.gps_origin_longitude + 180) / 6) + 1)
+        epsg_code = f"EPSG:{zone_number + (32600 if self.config.gps_origin_latitude >= 0 else 32700)}"
         self._to_utm = Transformer.from_crs("EPSG:4326", epsg_code, always_xy=True)
 
         self.create_subscription(Twist, "/cmd_vel", self._cmd_vel_callback, 10)
@@ -57,9 +57,9 @@ class LocalizationSimulator(Node):
         self._last_cmd_time = self.get_clock().now()
 
     def _from_ll_callback(self, request: FromLL.Request, response: FromLL.Response) -> None:
-        _datum_x, _datum_y = self._to_utm.transform(self.config.datum_longitude, self.config.datum_latitude)
+        _origin_x, _origin_y = self._to_utm.transform(self.config.gps_origin_longitude, self.config.gps_origin_latitude)
         utm_x, utm_y = self._to_utm.transform(request.ll_point.longitude, request.ll_point.latitude)
-        response.map_point = Point(x=utm_x - _datum_x, y=utm_y - _datum_y, z=0.0)
+        response.map_point = Point(x=utm_x - _origin_x, y=utm_y - _origin_y, z=0.0)
         return response
 
     def _update_position(self) -> None:

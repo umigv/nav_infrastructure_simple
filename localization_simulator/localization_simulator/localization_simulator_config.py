@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class LocalizationSimulatorConfig:
     """Configuration for the localization simulator node.
 
-    datum_latitude / longitude: GPS origin in WGS84 degrees. All map-frame coordinates are relative to this datum.
+    gps_origin_latitude / longitude: GPS origin in WGS84 degrees. All map-frame coordinates are relative to this.
     update_period_s: how often the position integration + TF publishing runs.
     cmd_vel_timeout_s: if no cmd_vel is received within this window the robot velocity is zeroed.
     map_odom_noise_stddev: standard deviation of random offset applied to the map->odom transform each update.
@@ -15,8 +15,8 @@ class LocalizationSimulatorConfig:
     map_frame_id: str = "map"
     odom_frame_id: str = "odom"
     base_frame_id: str = "base_link"
-    datum_latitude: float = 42.29436962024459
-    datum_longitude: float = -83.70836182187283
+    gps_origin_latitude: float = 42.29436962024459
+    gps_origin_longitude: float = -83.70836182187283
     update_period_s: float = 0.01
     cmd_vel_timeout_s: float = 0.5
 

@@ -4,7 +4,7 @@ Simulated localization node for testing the navigation stack without real hardwa
 ## Behavior
 - Integrates `/cmd_vel` using simple 2D kinematics (unicycle model) at a fixed period
 - Velocity is zeroed if no `/cmd_vel` is received within the configurable timeout
-- The UTM zone is automatically derived from the datum coordinates
+- The UTM zone is automatically derived from the gps origin
 - The `map` -> `odom` transform is identity
 
 ## Subscribed Topics
@@ -19,4 +19,4 @@ Simulated localization node for testing the navigation stack without real hardwa
 `map` -> `odom` - identity
 
 ## Services
-`fromLL` (`robot_localization/srv/FromLL`) - converts GPS lat/lon to map-frame coordinates relative to the datum
+`fromLL` (`robot_localization/srv/FromLL`) - converts GPS lat/lon to map-frame coordinates relative to the gps origin
