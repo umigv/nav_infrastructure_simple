@@ -20,7 +20,8 @@ setup(
     extras_require={},
     entry_points={
         'console_scripts': [
-            'goal_selection = goal_selection.node:main'
+            'auto_nav = goal_selection.autonav_node:main',
+            'self_drive = goal_selection.selfdrive_node:main',
         ],
     },
 )
