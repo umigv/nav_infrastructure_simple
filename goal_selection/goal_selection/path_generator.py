@@ -297,8 +297,6 @@ def generate_path_occupancy_grid_indices(
                 priority = new_cost + heuristic
                 heapq.heappush(priority_queue, IndexAndCost(cost=priority, index=neighbor))
 
-    goal_selection_node.get_logger().info(f"Generated path from {start_index} to {best_goal_index}!")
-
     # In order to construct a path from the search process, start from the best node
     # within the occupancy grid, and work backwards until you reach the start node. 
     backtrace: list[OccupancyGridIndex] = []
@@ -306,10 +304,40 @@ def generate_path_occupancy_grid_indices(
     while came_from[current_backtrace_index] != null_occ_grid_index:
         backtrace.append(current_backtrace_index)
         current_backtrace_index = came_from[current_backtrace_index]
+    backtrace.append(current_backtrace_index)  # include the start node
 
-    goal_selection_node.get_logger().info(f"Generated path of length {len(backtrace)} from {start_index} to {best_goal_index}!")
+    # Theta* can skip grid neighbours via line-of-sight shortcuts, so consecutive
+    # backtrace points may be far apart.  Interpolate so that no two adjacent
+    # points are more than hypot(resolution, resolution) apart (i.e. sqrt(2)
+    # cells in grid-index space).
+    max_gap = math.sqrt(2)  # one diagonal step in grid-index units
+    interpolated: list[OccupancyGridIndex] = []
+    ordered = list(reversed(backtrace))
 
-    return reversed(backtrace)
+    for i, pt in enumerate(ordered):
+        if i == 0:
+            interpolated.append(pt)
+            continue
+
+        prev = interpolated[-1]
+        dy = pt.y - prev.y
+        dx = pt.x - prev.x
+        dist = math.hypot(dy, dx)
+
+        if dist > max_gap:
+            steps = math.ceil(dist / max_gap)
+            for s in range(1, steps):
+                t = s / steps
+                interpolated.append(OccupancyGridIndex(
+                    y=round(prev.y + dy * t),
+                    x=round(prev.x + dx * t),
+                ))
+
+        interpolated.append(pt)
+
+    goal_selection_node.get_logger().info(f"Generated path of length {len(interpolated)} from {start_index} to {best_goal_index}!")
+
+    return interpolated
 
 def generate_path(
     goal_selection_node: Node,
