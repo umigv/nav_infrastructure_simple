@@ -1,10 +1,13 @@
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Twist, PoseStamped, Quaternion
+from geometry_msgs.msg import Twist, PoseStamped
 from nav_msgs.msg import Odometry, Path
 import math
 import numpy as np
 from scipy.interpolate import splprep, splev
+from nav_utils.geometry import get_yaw_radians_from_quaternion
+import nav_utils.config
+from .pure_pursuit_config import PurePursuitConfig
 
 class PurePursuitNode(Node):
     def __init__(self) -> None:
@@ -12,10 +15,7 @@ class PurePursuitNode(Node):
         self.get_logger().info('Pure Pursuit Node started.')
 
         # Parameters
-        self.max_angular_speed: float = 0.6
-        self.base_lookahead: float = 0.1 # base lookahead distance
-        self.k_speed: float = 0.55 # scaling factor for current speed when calculating lookahead distance
-        self.speed_percent: float = 2.0 # for scaling linear velocity
+        self.config: PurePursuitConfig = nav_utils.config.load(self, PurePursuitConfig)
 
         # State
         self.smoothed_path_points: list[(float, float)] = [] # x, y
@@ -29,16 +29,34 @@ class PurePursuitNode(Node):
         self.cmd_pub: rclpy.Publisher = self.create_publisher(Twist, '/joy_cmd_vel', 10)
         self.path_pub: rclpy.Publisher = self.create_publisher(Path, '/smoothed_path', 10)
 
-        self.create_timer(0.1, self.control_loop)
-        self.create_timer(0.1, self.publish_path)
+        self.create_timer(self.config.control_loop_sample_time, self.control_loop)
 
     def path_callback(self, path_msg: Path) -> None:
         self.get_logger().info('Received a new path from subscription.')
         self.smoothed_path_points = self.smooth_path_spline(path_msg)
+        self.publish_smoothed_path(self.smoothed_path_points)
         self.reached_goal = False
         self.visited = 0
 
-    def smooth_path_spline(self, path: Path, smoothing: float = 0.1) -> list[(float, float)]:
+    def publish_smoothed_path(self, path: list[(float, float)]) -> None:
+        # Create and publish a nav_msgs/msg/Path.msg using the smoothed path points
+        if not path:
+            return
+        path_msg = Path()
+        now = self.get_clock().now().to_msg()
+        path_msg.header.stamp = now
+        path_msg.header.frame_id = "odom"
+        for x, y in path:
+            pose = PoseStamped()
+            pose.header.stamp = now
+            pose.header.frame_id = "odom"
+            pose.pose.position.x = x
+            pose.pose.position.y = y
+            pose.pose.orientation.w = 1.0
+            path_msg.poses.append(pose)
+        self.path_pub.publish(path_msg)
+
+    def smooth_path_spline(self, path: Path) -> list[(float, float)]:
         # Fit a B-spline to the waypoints in the path
         # Need at least 4 points to fit a spline, return the original path if < 4 points
         if len(path.poses) <= 3:
@@ -48,7 +66,7 @@ class PurePursuitNode(Node):
         y = [pose_stamped.pose.position.y for pose_stamped in path.poses]
         
         # Fit spline with no periodicity, and smoothing factor `s`
-        tck, _ = splprep([x, y], s=smoothing, per=0)
+        tck, _ = splprep([x, y], s=self.config.smoothing, per=0)
 
         # Interpolate with 3 times the number of points
         num_points = 3 * len(path.poses)
@@ -61,15 +79,10 @@ class PurePursuitNode(Node):
         # Calculate and update the pose and current speed
         pos = msg.pose.pose.position
         ori = msg.pose.pose.orientation
-        self.pose = (pos.x, pos.y, self.get_yaw_from_quaternion(ori))
+        self.pose = (pos.x, pos.y, get_yaw_radians_from_quaternion(ori))
         vx = msg.twist.twist.linear.x
         vy = msg.twist.twist.linear.y
         self.current_speed = math.hypot(vx, vy)
-
-    def get_yaw_from_quaternion(self, q: Quaternion) -> float:
-        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
-        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-        return math.atan2(siny_cosp, cosy_cosp)
 
     def find_lookahead_point(self) -> tuple[float, float] | None:
         # Find point on path to move toward based on current pose, smoothed path, and current speed
@@ -80,7 +93,7 @@ class PurePursuitNode(Node):
         goal_x, goal_y = self.smoothed_path_points[-1]
         goal_dist = math.hypot(goal_x - x, goal_y - y)
 
-        self.lookahead_distance = max(0.1, min(0.4, self.base_lookahead + self.k_speed * self.current_speed))
+        self.lookahead_distance = max(self.config.min_lookahead, min(self.config.max_lookahead, self.config.base_lookahead + self.config.k_speed * self.current_speed))
         r = self.lookahead_distance
 
         if goal_dist < r:
@@ -149,15 +162,15 @@ class PurePursuitNode(Node):
         curvature = 2 * local_y / (local_x ** 2 + local_y ** 2)
 
         # Scale up linear
-        raw_linear = self.lookahead_distance * self.speed_percent
+        raw_linear = self.lookahead_distance * self.config.speed_percent
     
         # More linear velocity on straights
         raw_angular = raw_linear * curvature
     
         # Scale both linear and angular if angular exceeds limit
         # This keeps the proportions of pure pursuit
-        if abs(raw_angular) > self.max_angular_speed:
-            scale = self.max_angular_speed / abs(raw_angular)
+        if abs(raw_angular) > self.config.max_angular_speed:
+            scale = self.config.max_angular_speed / abs(raw_angular)
             linear = raw_linear * scale
             angular = raw_angular * scale
         else:
@@ -168,24 +181,6 @@ class PurePursuitNode(Node):
         cmd.linear.x = linear
         cmd.angular.z = angular
         self.cmd_pub.publish(cmd)
-
-    def publish_path(self) -> None:
-        # Create and publish a nav_msgs/msg/Path.msg using the smoothed path points
-        if not self.smoothed_path_points:
-            return
-        path_msg = Path()
-        now = self.get_clock().now().to_msg()
-        path_msg.header.stamp = now
-        path_msg.header.frame_id = "odom"
-        for x, y in self.smoothed_path_points:
-            pose = PoseStamped()
-            pose.header.stamp = now
-            pose.header.frame_id = "odom"
-            pose.pose.position.x = x
-            pose.pose.position.y = y
-            pose.pose.orientation.w = 1.0
-            path_msg.poses.append(pose)
-        self.path_pub.publish(path_msg)
 
 def main(args=None):
     rclpy.init(args=args)
