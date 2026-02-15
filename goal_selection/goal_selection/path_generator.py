@@ -71,6 +71,24 @@ def convert_occupancy_grid_index_to_meters(
         y=rotated_occ_point_with_robot_occ_origin.y * occupancy_grid_resolution + robot_pose.position.y
     )
 
+def _convert_meters_to_grid(
+    occupancy_grid_resolution: float,
+    point_meters: Point,
+    robot_pose: Pose,
+) -> tuple[float, float]:
+    """Convert a world-frame point into fractional occupancy grid (y, x) coordinates."""
+    yaw = get_yaw_radians_from_quaternion(robot_pose.orientation)
+    cos_yaw = math.cos(yaw)
+    sin_yaw = math.sin(yaw)
+
+    # Undo translation then inverse-rotate
+    dx = (point_meters.x - robot_pose.position.x) / occupancy_grid_resolution
+    dy = (point_meters.y - robot_pose.position.y) / occupancy_grid_resolution
+    grid_x =  dx * cos_yaw + dy * sin_yaw
+    grid_y = -dx * sin_yaw + dy * cos_yaw
+    return (grid_y, grid_x)
+
+
 def find_closest_drivable_point(occupancy_grid: OccupancyGrid) -> OccupancyGridIndex | None:
     """
     The robot is in unknown space in the occupancy grid, meaning we don't know if its
@@ -188,15 +206,18 @@ def find_best_goal_index(
 ) -> OccupancyGridIndex:
     """
     DFS through all reachable drivable cells starting from start_index and
-    return the one closest (in meters) to the waypoint.
+    return the one closest to the waypoint.
+
+    Converts the waypoint to grid coordinates once up front so that per-node
+    distance is a cheap squared-distance comparison with no trig.
     """
-    best_index = start_index
-    best_distance = index_cost(
-        occupancy_grid_resolution=occupancy_grid.info.resolution,
-        index=start_index,
-        robot_pose=robot_pose,
-        waypoint_meters=waypoint_meters,
+    # Precompute waypoint in grid coordinates (one-time trig)
+    wp_gy, wp_gx = _convert_meters_to_grid(
+        occupancy_grid.info.resolution, waypoint_meters, robot_pose
     )
+
+    best_index = start_index
+    best_dist_sq = (start_index.y - wp_gy) ** 2 + (start_index.x - wp_gx) ** 2
 
     visited: set[OccupancyGridIndex] = {start_index}
     stack: list[OccupancyGridIndex] = [start_index]
@@ -225,15 +246,10 @@ def find_best_goal_index(
             visited.add(neighbor)
             stack.append(neighbor)
 
-            distance = index_cost(
-                occupancy_grid_resolution=occupancy_grid.info.resolution,
-                index=neighbor,
-                robot_pose=robot_pose,
-                waypoint_meters=waypoint_meters,
-            )
-
-            if distance < best_distance:
-                best_distance = distance
+            # Squared grid-space distance (no trig, no sqrt)
+            d_sq = (neighbor.y - wp_gy) ** 2 + (neighbor.x - wp_gx) ** 2
+            if d_sq < best_dist_sq:
+                best_dist_sq = d_sq
                 best_index = neighbor
 
     return best_index
@@ -256,20 +272,19 @@ def generate_path_occupancy_grid_indices(
     producing shorter, smoother paths that are not constrained to grid edges.
 
     Uses occupancy grid indices as the coordinate system. Early-exits once
-    goal_index is expanded.
+    goal_index is expanded. Heuristic is grid-space Euclidean distance to
+    goal_index (no per-node trig).
     """
     came_from: dict[OccupancyGridIndex, OccupancyGridIndex] = {}
     cost_so_far: dict[OccupancyGridIndex, float] = {}
     closed: set[OccupancyGridIndex] = set()
     priority_queue: list[IndexAndCost] = []
 
+    resolution = occupancy_grid.info.resolution
+    gy, gx = goal_index.y, goal_index.x
+
     cost_so_far[start_index] = 0.0
-    start_heuristic = index_cost(
-        occupancy_grid_resolution=occupancy_grid.info.resolution,
-        index=start_index,
-        robot_pose=robot_pose,
-        waypoint_meters=waypoint_meters
-    )
+    start_heuristic = math.hypot(start_index.y - gy, start_index.x - gx) * resolution
     heapq.heappush(priority_queue, IndexAndCost(cost=start_heuristic, index=start_index))
 
     # Used as a placeholder for algorithms that use occupancy grid indices since it
@@ -292,7 +307,9 @@ def generate_path_occupancy_grid_indices(
         if current_index == goal_index:
             break
 
+        # Get the actual cost_so_far for this index
         current_cost = cost_so_far.get(current_index, float('inf'))
+
         parent = came_from[current_index]
 
         for dy, dx in itertools.product([-1, 0, 1], repeat=2):
@@ -335,13 +352,8 @@ def generate_path_occupancy_grid_indices(
                 cost_so_far[neighbor] = new_cost
                 came_from[neighbor] = new_parent
 
-                # Priority: cost_so_far + heuristic (distance to waypoint)
-                heuristic = index_cost(
-                    occupancy_grid_resolution=occupancy_grid.info.resolution,
-                    index=neighbor,
-                    robot_pose=robot_pose,
-                    waypoint_meters=waypoint_meters
-                )
+                # Priority: cost_so_far + heuristic (grid-space distance to goal)
+                heuristic = math.hypot(neighbor.y - gy, neighbor.x - gx) * resolution
                 priority = new_cost + heuristic
                 heapq.heappush(priority_queue, IndexAndCost(cost=priority, index=neighbor))
 
