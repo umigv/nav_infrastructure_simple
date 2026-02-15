@@ -5,7 +5,7 @@ Simulated localization node for testing the navigation stack without real hardwa
 - Integrates `/cmd_vel` using simple 2D kinematics (unicycle model) at a fixed period
 - Velocity is zeroed if no `/cmd_vel` is received within the configurable timeout
 - The UTM zone is automatically derived from the datum coordinates
-- The `map` -> `odom` transform is identity by default, with optional Gaussian noise to simulate localization drift
+- The `map` -> `odom` transform is identity
 
 ## Subscribed Topics
 `/cmd_vel` (`geometry_msgs/Twist`) - velocity commands from twist_mux
@@ -16,7 +16,7 @@ Simulated localization node for testing the navigation stack without real hardwa
 
 ## TF Broadcasts
 `odom` -> `base_link` - robot pose from integrated cmd_vel
-`map` -> `odom` - identity + optional noise
+`map` -> `odom` - identity
 
 ## Services
 `fromLL` (`robot_localization/srv/FromLL`) - converts GPS lat/lon to map-frame coordinates relative to the datum
