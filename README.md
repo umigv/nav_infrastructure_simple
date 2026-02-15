@@ -40,7 +40,7 @@ Run each of these commands in separate terminals.
     ```
 2. Run navigation stack with simulation enabled:
     ```bash
-    ros2 launch nav_infrastructure_launch infra.launch.py simulation:=true
+    ros2 launch nav_bringup infra.launch.py simulation:=true
     ```
 3. Publish initial gps coords
     ```bash

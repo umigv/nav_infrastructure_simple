@@ -3,7 +3,7 @@ from glob import glob
 
 from setuptools import find_packages, setup
 
-package_name = "nav_infrastructure_launch"
+package_name = "nav_bringup"
 
 setup(
     name=package_name,
