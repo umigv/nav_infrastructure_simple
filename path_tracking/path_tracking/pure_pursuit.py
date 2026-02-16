@@ -24,10 +24,10 @@ class PurePursuitNode(Node):
         self.reached_goal: bool = False
         self.current_speed: float = 0.0
 
-        self.odom_sub: rclpy.Subscription = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
-        self.path_sub: rclpy.Subscription = self.create_subscription(Path, '/path', self.path_callback, 10)
-        self.cmd_pub: rclpy.Publisher = self.create_publisher(Twist, '/joy_cmd_vel', 10)
-        self.path_pub: rclpy.Publisher = self.create_publisher(Path, '/smoothed_path', 10)
+        self.odom_sub: rclpy.Subscription = self.create_subscription(Odometry, 'odom', self.odom_callback, 10)
+        self.path_sub: rclpy.Subscription = self.create_subscription(Path, 'path', self.path_callback, 10)
+        self.cmd_pub: rclpy.Publisher = self.create_publisher(Twist, 'nav_cmd_vel', 10)
+        self.path_pub: rclpy.Publisher = self.create_publisher(Path, 'smoothed_path', 10)
 
         self.create_timer(self.config.control_loop_sample_time, self.control_loop)
 
