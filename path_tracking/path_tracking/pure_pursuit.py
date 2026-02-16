@@ -1,109 +1,91 @@
-import rclpy
-from rclpy.node import Node
-from rclpy.callback_groups import ReentrantCallbackGroup
-from geometry_msgs.msg import Twist, PoseStamped, Quaternion
-from nav_msgs.msg import Odometry, Path
-# import asyncio
 import math
-import time
+
+import nav_utils.config
 import numpy as np
-from scipy.interpolate import splprep, splev
+import rclpy
+from geometry_msgs.msg import PoseStamped, Twist
+from nav_msgs.msg import Odometry, Path
+from nav_utils.geometry import get_yaw_radians_from_quaternion
+from rclpy.node import Node
+from scipy.interpolate import splev, splprep
+
+from .pure_pursuit_config import PurePursuitConfig
+
 
 class PurePursuitNode(Node):
     def __init__(self) -> None:
-        super().__init__('pure_pursuit_lookahead')
-        self.get_logger().info('Pure Pursuit Node started.')
+        super().__init__("pure_pursuit_lookahead")
+        self.get_logger().info("Pure Pursuit Node started.")
 
         # Parameters
-        # self.max_linear_speed = 0.6
-        self.max_angular_speed: float = 0.6
-        self.base_lookahead: float = 0.1 # base lookahead distance
-        self.k_speed: float = 0.55 # scaling factor for current speed when calculating lookahead distance
-        self.visited: int = 0 # index of last visited/processed point in path when finding lookahead point
-        # self.speed_factor: float = 1
+        self.config: PurePursuitConfig = nav_utils.config.load(self, PurePursuitConfig)
 
         # State
-        self.smoothed_path_points: list[(float, float)] = [] # x, y
-        self.pose: tuple[float, float, float] | None = None # x, y, yaw
+        self.smoothed_path_points: list[tuple[float, float]] = []  # x, y
+        self.pose: tuple[float, float, float] | None = None  # x, y, yaw
+        self.visited: int = 0  # index of last visited/processed point in path when finding lookahead point
         self.reached_goal: bool = False
         self.current_speed: float = 0.0
 
-        self.cb_group: ReentrantCallbackGroup = ReentrantCallbackGroup()
-        self.create_subscription(Odometry, '/odom', self.odom_callback, 10, callback_group=self.cb_group)
-        self.cmd_pub: rclpy.Publisher = self.create_publisher(Twist, '/joy_cmd_vel', 10) # for running on the robot
-        # self.cmd_pub: rclpy.Publisher = self.create_publisher(Twist, '/cmd_vel', 10) # for nav_visualization
-        self.path_pub: rclpy.Publisher = self.create_publisher(Path, '/smoothed_path', 10)
+        self.odom_sub: rclpy.Subscription = self.create_subscription(Odometry, "odom", self.odom_callback, 10)
+        self.path_sub: rclpy.Subscription = self.create_subscription(Path, "path", self.path_callback, 10)
+        self.cmd_pub: rclpy.Publisher = self.create_publisher(Twist, "nav_cmd_vel", 10)
+        self.path_pub: rclpy.Publisher = self.create_publisher(Path, "smoothed_path", 10)
 
-        self.subscription: rclpy.Subscription = self.create_subscription(
-            Path,
-            '/path',
-            self.path_callback,
-            10,
-            callback_group=self.cb_group
-        )
-
-        self.speed_percent: float = 2.0
-        # self.exec_percent: float = 0.6
-
-        # asyncio.create_task(self.update_vals())
-
-        self.create_timer(0.1, self.control_loop, callback_group=self.cb_group)
-        self.create_timer(0.1, self.publish_path, callback_group=self.cb_group)
-
-        # threading.Thread(target=self.helper, daemon=True).start()
-
-    # def helper(self) -> None:
-    #     asyncio.run(self.update_vals())
-
-    # async def update_vals(self) -> None:
-    #     await asyncio.sleep(1)
-
-        self.speed_percent = 2
-        # self.exec_percent = 0.6
-        print("change vals to")
-        print(self.speed_percent)
-        # print(self.exec_percent)
+        self.create_timer(self.config.control_loop_sample_time, self.control_loop)
 
     def path_callback(self, path_msg: Path) -> None:
-        self.get_logger().info('Received a new path from subscription.')
-
+        self.get_logger().info("Received a new path from subscription.")
         self.smoothed_path_points = self.smooth_path_spline(path_msg)
+        self.publish_smoothed_path(self.smoothed_path_points)
         self.reached_goal = False
         self.visited = 0
 
-    def smooth_path_spline(self, path: Path, smoothing: float = 0.1) -> list[(float, float)]:
-        # Fit a B-spline to the waypoints in the path
+    def publish_smoothed_path(self, path: list[tuple[float, float]]) -> None:
+        # Create and publish a nav_msgs/msg/Path.msg using the smoothed path points
+        if not path:
+            return
+        path_msg = Path()
+        now = self.get_clock().now().to_msg()
+        path_msg.header.stamp = now
+        path_msg.header.frame_id = "odom"
+        for x, y in path:
+            pose = PoseStamped()
+            pose.header.stamp = now
+            pose.header.frame_id = "odom"
+            pose.pose.position.x = x
+            pose.pose.position.y = y
+            pose.pose.orientation.w = 1.0
+            path_msg.poses.append(pose)
+        self.path_pub.publish(path_msg)
 
+    def smooth_path_spline(self, path: Path) -> list[tuple[float, float]]:
+        # Fit a B-spline to the waypoints in the path
         # Need at least 4 points to fit a spline, return the original path if < 4 points
         if len(path.poses) <= 3:
             return [(pose_stamped.pose.position.x, pose_stamped.pose.position.y) for pose_stamped in path.poses]
 
         x = [pose_stamped.pose.position.x for pose_stamped in path.poses]
         y = [pose_stamped.pose.position.y for pose_stamped in path.poses]
-        
+
         # Fit spline with no periodicity, and smoothing factor `s`
-        tck, _ = splprep([x, y], s=smoothing, per=0)
+        tck, _ = splprep([x, y], s=self.config.smoothing, per=0)
 
         # Interpolate with 3 times the number of points
         num_points = 3 * len(path.poses)
         u_fine = np.linspace(0, 1, num_points)
         x_smooth, y_smooth = splev(u_fine, tck)
 
-        return list(zip(x_smooth, y_smooth))
+        return list(zip(x_smooth, y_smooth, strict=True))
 
     def odom_callback(self, msg: Odometry) -> None:
         # Calculate and update the pose and current speed
         pos = msg.pose.pose.position
         ori = msg.pose.pose.orientation
-        self.pose = (pos.x, pos.y, self.get_yaw_from_quaternion(ori))
+        self.pose = (pos.x, pos.y, get_yaw_radians_from_quaternion(ori))
         vx = msg.twist.twist.linear.x
         vy = msg.twist.twist.linear.y
         self.current_speed = math.hypot(vx, vy)
-
-    def get_yaw_from_quaternion(self, q: Quaternion) -> float:
-        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
-        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-        return math.atan2(siny_cosp, cosy_cosp)
 
     def find_lookahead_point(self) -> tuple[float, float] | None:
         # Find point on path to move toward based on current pose, smoothed path, and current speed
@@ -114,11 +96,14 @@ class PurePursuitNode(Node):
         goal_x, goal_y = self.smoothed_path_points[-1]
         goal_dist = math.hypot(goal_x - x, goal_y - y)
 
-        self.lookahead_distance = max(0.1, min(0.4, self.base_lookahead + self.k_speed * self.current_speed))
+        self.lookahead_distance = max(
+            self.config.min_lookahead,
+            min(self.config.max_lookahead, self.config.base_lookahead + self.config.k_speed * self.current_speed),
+        )
         r = self.lookahead_distance
 
         if goal_dist < r:
-            self.get_logger().info('REACHED GOAL')
+            self.get_logger().info("REACHED GOAL")
             self.reached_goal = True
             self.smoothed_path_points = []
             return None
@@ -163,13 +148,13 @@ class PurePursuitNode(Node):
             d = math.hypot(lx, ly)
             if lx > -0.1 and d >= r:
                 self.visited = j
-                self.get_logger().warn(f'Fallback: chasing ahead point at index {j}')
+                self.get_logger().warn(f"Fallback: chasing ahead point at index {j}")
                 return lx, ly
 
         # Nothing usable found
-        self.get_logger().warn('No valid lookahead point found – stopping')
+        self.get_logger().warn("No valid lookahead point found - stopping")
         return None
-    
+
     def control_loop(self) -> None:
         # Calculate and publish the linear and angular velocity to drive toward the lookahead point
         local_point = self.find_lookahead_point()
@@ -178,52 +163,31 @@ class PurePursuitNode(Node):
         if local_point is None:
             self.cmd_pub.publish(Twist())
             return
-    
+
         local_x, local_y = local_point
-        curvature = 2 * local_y / (local_x ** 2 + local_y ** 2)
+        curvature = 2 * local_y / (local_x**2 + local_y**2)
 
         # Scale up linear
-        raw_linear = self.lookahead_distance * self.speed_percent
-    
+        raw_linear = self.lookahead_distance * self.config.speed_percent
+
         # More linear velocity on straights
-        '''
-        if abs(curvature) < 0.2:
-            raw_linear *= 1.5
-        '''
         raw_angular = raw_linear * curvature
-    
+
         # Scale both linear and angular if angular exceeds limit
         # This keeps the proportions of pure pursuit
-        if abs(raw_angular) > self.max_angular_speed:
-            scale = self.max_angular_speed / abs(raw_angular)
+        if abs(raw_angular) > self.config.max_angular_speed:
+            scale = self.config.max_angular_speed / abs(raw_angular)
             linear = raw_linear * scale
             angular = raw_angular * scale
         else:
             linear = raw_linear
             angular = raw_angular
-    
+
         cmd = Twist()
         cmd.linear.x = linear
         cmd.angular.z = angular
         self.cmd_pub.publish(cmd)
 
-    def publish_path(self) -> None:
-        # Create and publish a nav_msgs/msg/Path.msg using the smoothed path points
-        if not self.smoothed_path_points:
-            return
-        path_msg = Path()
-        now = self.get_clock().now().to_msg()
-        path_msg.header.stamp = now
-        path_msg.header.frame_id = "odom"
-        for x, y in self.smoothed_path_points:
-            pose = PoseStamped()
-            pose.header.stamp = now
-            pose.header.frame_id = "odom"
-            pose.pose.position.x = x
-            pose.pose.position.y = y
-            pose.pose.orientation.w = 1.0
-            path_msg.poses.append(pose)
-        self.path_pub.publish(path_msg)
 
 def main(args=None):
     rclpy.init(args=args)
@@ -233,5 +197,6 @@ def main(args=None):
     node.destroy_node()
     rclpy.shutdown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
