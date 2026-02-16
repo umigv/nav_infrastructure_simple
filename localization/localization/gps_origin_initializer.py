@@ -4,8 +4,10 @@ from statistics import median
 import nav_utils.config
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from robot_localization.srv import SetDatum
 from sensor_msgs.msg import NavSatFix
+from std_msgs.msg import Empty
 
 from .gps_origin_initializer_config import GpsOriginInitializerConfig
 
@@ -22,6 +24,12 @@ class GpsOriginInitializer(Node):
         self.client = self.create_client(SetDatum, "set_datum")
         self.get_logger().info(f"Waiting for service {self.client.srv_name} to be available...")
         self.client.wait_for_service()
+
+        self._localization_init_publisher = self.create_publisher(
+            Empty,
+            "localization_initialized",
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+        )
 
         self.samples: list[NavSatFix] = []
         self.sent = False
@@ -89,11 +97,10 @@ class GpsOriginInitializer(Node):
     def on_response(self, future):
         try:
             future.result()
+            self._localization_init_publisher.publish(Empty())
             self.get_logger().info("Origin set successfully. map frame is now aligned to startup GPS origin.")
         except Exception as e:
             self.get_logger().error(f"{self.client.srv_name} call error: {e}")
-
-        self.destroy_node()
 
 
 def main():
