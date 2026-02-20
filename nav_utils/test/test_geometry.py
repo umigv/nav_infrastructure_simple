@@ -5,7 +5,7 @@ from nav_utils.geometry import (
     distance,
     get_yaw_radians_from_quaternion,
     make_pose,
-    make_quarternion_from_yaw,
+    make_quaternion_from_yaw,
     point_is_close,
     rotate_by_yaw,
 )
@@ -30,7 +30,7 @@ def test_point_is_close_outside_tolerance():
 
 
 def test_make_quaternion_from_yaw_zero():
-    q = make_quarternion_from_yaw(0.0)
+    q = make_quaternion_from_yaw(0.0)
     assert q.x == 0.0
     assert q.y == 0.0
     assert abs(q.z - 0.0) < 1e-12
@@ -39,48 +39,48 @@ def test_make_quaternion_from_yaw_zero():
 
 def test_make_quaternion_from_yaw_positive():
     yaw = math.pi / 2
-    q = make_quarternion_from_yaw(yaw)
+    q = make_quaternion_from_yaw(yaw)
     assert abs(q.z - math.sin(yaw / 2.0)) < 1e-12
     assert abs(q.w - math.cos(yaw / 2.0)) < 1e-12
 
 
 def test_make_quaternion_from_yaw_negative():
     yaw = -math.pi / 3
-    q = make_quarternion_from_yaw(yaw)
+    q = make_quaternion_from_yaw(yaw)
     assert abs(q.z - math.sin(yaw / 2.0)) < 1e-12
     assert abs(q.w - math.cos(yaw / 2.0)) < 1e-12
 
 
 def test_make_quaternion_is_unit_length():
     yaw = 1.789
-    q = make_quarternion_from_yaw(yaw)
+    q = make_quaternion_from_yaw(yaw)
     norm = math.sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w)
     assert abs(norm - 1.0) < 1e-12
 
 
 def test_make_quaternion_round_trip_yaw():
     yaw_true = -2.1
-    q = make_quarternion_from_yaw(yaw_true)
+    q = make_quaternion_from_yaw(yaw_true)
     yaw = get_yaw_radians_from_quaternion(q)
     assert abs(yaw - yaw_true) < 1e-6
 
 
 def test_get_yaw_radians_from_quaternion_zero():
-    q = make_quarternion_from_yaw(0.0)
+    q = make_quaternion_from_yaw(0.0)
     yaw = get_yaw_radians_from_quaternion(q)
     assert abs(yaw - 0.0) < 1e-6
 
 
 def test_get_yaw_radians_from_quaternion_positive():
     yaw_true = math.pi / 2
-    q = make_quarternion_from_yaw(yaw_true)
+    q = make_quaternion_from_yaw(yaw_true)
     yaw = get_yaw_radians_from_quaternion(q)
     assert abs(yaw - yaw_true) < 1e-6
 
 
 def test_get_yaw_radians_from_quaternion_negative():
     yaw_true = -math.pi / 4
-    q = make_quarternion_from_yaw(yaw_true)
+    q = make_quaternion_from_yaw(yaw_true)
     yaw = get_yaw_radians_from_quaternion(q)
     assert abs(yaw - yaw_true) < 1e-6
 
