@@ -1,5 +1,7 @@
 FROM ros:humble
 
+ENV ROS_HOME=/opt/ros_home
+
 WORKDIR /tmp/src/nav_infrastructure_simple
 COPY . .
 
