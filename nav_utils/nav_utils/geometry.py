@@ -19,7 +19,7 @@ def get_yaw_radians_from_quaternion(q: Quaternion) -> float:
     return math.atan2(siny_cosp, cosy_cosp)
 
 
-def make_quarternion_from_yaw(yaw: float) -> Quaternion:
+def make_quaternion_from_yaw(yaw: float) -> Quaternion:
     """ROS quaternion for yaw about +Z."""
     q = Quaternion()
     q.x = 0.0
@@ -43,5 +43,5 @@ def make_pose(x: float, y: float, yaw: float) -> Pose:
     """Make 2d robot pose"""
     p = Pose()
     p.position = Point(x=x, y=y, z=0.0)
-    p.orientation = make_quarternion_from_yaw(yaw)
+    p.orientation = make_quaternion_from_yaw(yaw)
     return p
