@@ -2,7 +2,7 @@ name: Build CI image
 
 on:
   push:
-    branches: [main, ryanliao/ci-speedup]
+    branches: [main]
     paths:
       - Dockerfile
       - '**/package.xml'
