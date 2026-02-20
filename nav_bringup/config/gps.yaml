@@ -1,0 +1,4 @@
+gps_publisher:
+  ros__parameters:
+    serial_port: "/dev/ttyACM0"
+    poll_rate_hz: 100.0

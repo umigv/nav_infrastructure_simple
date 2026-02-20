@@ -1,0 +1,4 @@
+[submodule "imu_publisher"]
+	path = imu_publisher
+	url = https://github.com/RobotnikAutomation/vectornav.git
+	branch = humble-devel
