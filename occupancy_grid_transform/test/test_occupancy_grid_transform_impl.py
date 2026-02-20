@@ -41,11 +41,11 @@ def test_add_border():
 
     # further borders are occupied
     assert (grid[-1, :] == 100).all()
-    assert (grid[:, 0] == 100).all()
+    assert (grid[0, :] == 100).all()
     assert (grid[:, -1] == 100).all()
 
     # bottom row and interior is untouched
-    assert (grid[0, 1:-1] == 0).all()
+    assert (grid[1:-1, 0] == 0).all()
     assert (grid[1:-1, 1:-1] == 0).all()
 
 
