@@ -13,6 +13,7 @@ concurrency:
 jobs:
   ros-tests:
     runs-on: ubuntu-22.04
+    container: ros:humble
     env:
       ROS_DISTRO: humble
 
@@ -23,15 +24,8 @@ jobs:
           path: ws/src/nav_infrastructure_simple
           submodules: recursive
 
-      - name: Set up ROS
-        uses: ros-tooling/setup-ros@v0.7
-        with:
-          required-ros-distributions: ${{ env.ROS_DISTRO }}
-
-      - name: rosdep init/update
-        run: |
-          sudo rosdep init 2>/dev/null || true
-          rosdep update
+      - name: rosdep update
+        run: rosdep update
 
       - name: Install ROS deps via rosdep
         run: |
