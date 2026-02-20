@@ -13,7 +13,11 @@ concurrency:
 jobs:
   ros-tests:
     runs-on: ubuntu-22.04
-    container: ros:humble
+    container:
+      image: ghcr.io/umigv/nav_infrastructure_simple:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     env:
       ROS_DISTRO: humble
 
@@ -24,15 +28,8 @@ jobs:
           path: ws/src/nav_infrastructure_simple
           submodules: recursive
 
-      - name: rosdep update
-        run: |
-          apt-get update
-          rosdep update
-
-      - name: Install ROS deps via rosdep
-        run: |
-          apt-get install -y python3-pip
-          rosdep install --from-paths ws/src/nav_infrastructure_simple --ignore-src -r -y
+      - name: Install any new deps (top-up)
+        run: rosdep install --from-paths ws/src/nav_infrastructure_simple --ignore-src -r -y
 
       - name: Build (repo packages)
         working-directory: ws/src/nav_infrastructure_simple
