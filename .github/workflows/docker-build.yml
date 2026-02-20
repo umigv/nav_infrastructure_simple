@@ -32,4 +32,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/umigv/nav_infrastructure_simple:latest
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}

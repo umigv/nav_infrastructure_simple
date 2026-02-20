@@ -1,5 +1,9 @@
 name: test
 
+permissions:
+  contents: read
+  packages: read
+
 on:
   push:
     branches: [main]
@@ -14,31 +18,29 @@ jobs:
   ros-tests:
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/umigv/nav_infrastructure_simple:latest
+      image: ghcr.io/${{ github.repository }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    env:
-      ROS_DISTRO: humble
+
+    defaults:
+      run:
+        working-directory: ws/src/${{ github.event.repository.name }}
 
     steps:
-      - name: Checkout (into ws/src/nav_infrastructure_simple)
+      - name: Checkout into repo
         uses: actions/checkout@v4
         with:
-          path: ws/src/nav_infrastructure_simple
+          path: ws/src/${{ github.event.repository.name }}
 
       - name: Install any new deps (top-up)
-        run: rosdep install --from-paths ws/src/nav_infrastructure_simple --ignore-src -r -y
+        run: rosdep install --from-paths . --ignore-src -r -y
 
       - name: Build (repo packages)
-        working-directory: ws/src/nav_infrastructure_simple
-        run: |
-          bash scripts/build.sh
+        run: bash scripts/build.sh
 
       - name: Test (repo packages)
-        working-directory: ws/src/nav_infrastructure_simple
-        run: |
-          bash scripts/test.sh
+        run: bash scripts/test.sh
 
       - name: Upload logs on failure
         if: failure()
