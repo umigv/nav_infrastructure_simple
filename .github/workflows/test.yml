@@ -25,10 +25,13 @@ jobs:
           submodules: recursive
 
       - name: rosdep update
-        run: rosdep update
+        run: |
+          apt-get update
+          rosdep update
 
       - name: Install ROS deps via rosdep
         run: |
+          apt-get install -y python3-pip
           rosdep install --from-paths ws/src/nav_infrastructure_simple --ignore-src -r -y
 
       - name: Build (repo packages)
