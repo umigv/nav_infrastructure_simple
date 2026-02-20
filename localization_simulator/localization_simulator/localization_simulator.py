@@ -14,7 +14,7 @@ from geometry_msgs.msg import (
     Vector3,
 )
 from nav_msgs.msg import Odometry
-from nav_utils.geometry import make_quarternion_from_yaw
+from nav_utils.geometry import make_quaternion_from_yaw
 from pyproj import Transformer
 from rclpy.duration import Duration
 from rclpy.node import Node
@@ -79,7 +79,7 @@ class LocalizationSimulator(Node):
                     child_frame_id=self.config.base_frame_id,
                     transform=Transform(
                         translation=Vector3(x=self._x, y=self._y, z=0.0),
-                        rotation=make_quarternion_from_yaw(self._theta),
+                        rotation=make_quaternion_from_yaw(self._theta),
                     ),
                 ),
                 TransformStamped(
@@ -100,7 +100,7 @@ class LocalizationSimulator(Node):
                 pose=PoseWithCovariance(
                     pose=Pose(
                         position=Point(x=self._x, y=self._y, z=0.0),
-                        orientation=make_quarternion_from_yaw(self._theta),
+                        orientation=make_quaternion_from_yaw(self._theta),
                     )
                 ),
                 twist=TwistWithCovariance(twist=self._cmd_vel),
@@ -114,7 +114,7 @@ class LocalizationSimulator(Node):
                 pose=PoseWithCovariance(
                     pose=Pose(
                         position=Point(x=self._x, y=self._y, z=0.0),
-                        orientation=make_quarternion_from_yaw(self._theta),
+                        orientation=make_quaternion_from_yaw(self._theta),
                     )
                 ),
                 twist=TwistWithCovariance(twist=self._cmd_vel),
