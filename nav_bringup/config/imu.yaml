@@ -54,9 +54,9 @@ vectornav:
                               0.0,   0.0,    0.01]
 
     # Angular Velocity Covariances not produced by the sensor
-    angular_vel_covariance: [0.005,  0.0,    0.0,
-                             0.0,    0.005,  0.0,
-                             0.0,    0.0,    0.005]
+    angular_vel_covariance: [0.001,  0.0,    0.0,
+                             0.0,    0.001,  0.0,
+                             0.0,    0.0,    0.001]
 
     # Orientation covariance overwritten in driver, this is unused in the code
     orientation_covariance: [0.01,  0.0,   0.0,

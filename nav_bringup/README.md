@@ -50,14 +50,21 @@ ros2 launch nav_bringup sensors.launch.py
 
 
 ## localization.launch.py
-Launches localization. In simulation mode, runs the localization simulator in place of real localization nodes.
+Launches localization. In simulation mode, runs the localization simulator in place of real localization nodes . On real
+hardware, either `ekf_local` or `enc_odom_publisher` is used for local odometry depending on `use_enc_odom`.
 
 ```
-ros2 launch nav_bringup localization.launch.py [simulation:=true]
+ros2 launch nav_bringup localization.launch.py [simulation:=true] [use_enc_odom:=true]
 ```
 
 ### Parameters
 - `simulation`: Run the localization simulator instead of real localization, default `false`
+- `use_enc_odom`: Use encoder odometry integration instead of EKF for local odometry, default `false`
+
+### Subscribed Topics (real hardware, `simulation:=false`)
+- `imu/raw` (`sensor_msgs/Imu`) - Raw IMU data
+- `gps/raw` (`sensor_msgs/NavSatFix`) - Raw GPS fix
+- `enc_vel/raw` (`geometry_msgs/TwistWithCovarianceStamped`) - Encoder velocity (only when `use_enc_odom:=true`)
 
 ### Subscribed Topics (simulation, `simulation:=true`)
 - `cmd_vel` (`geometry_msgs/Twist`) - Velocity command used to integrate simulated robot position
