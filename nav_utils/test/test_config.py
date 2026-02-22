@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 import pytest
 from nav_utils.config import load
+from rcl_interfaces.msg import ParameterDescriptor
 
 
 class Param:
@@ -17,7 +18,7 @@ class MockNode:
     def get_name(self) -> str:
         return "MockNode"
 
-    def declare_parameter(self, key: str, default_value=None):
+    def declare_parameter(self, key: str, default_value=None, descriptor: ParameterDescriptor | None = None):
         self.declared.append((key, default_value))
         if key not in self._store:
             self._store[key] = default_value

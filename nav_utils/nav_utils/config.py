@@ -61,33 +61,37 @@ from collections.abc import Callable
 from dataclasses import MISSING, fields, is_dataclass
 from typing import Any, TypeVar, cast, get_type_hints
 
+from rcl_interfaces.msg import ParameterDescriptor
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 
 T = TypeVar("T")
+
+_TYPE_MAP: dict[type, Parameter.Type] = {
+    bool: Parameter.Type.BOOL,
+    int: Parameter.Type.INTEGER,
+    float: Parameter.Type.DOUBLE,
+    str: Parameter.Type.STRING,
+}
 
 
 # This is vibe coded
 def load(node: Node, cls: type[T], prefix: str = "") -> T:
     """
     Load ROS 2 parameters from `node` into a dataclass instance of type `cls`.
-
     Args:
         node: ROS 2 node providing parameters.
         cls: Dataclass type to construct.
         prefix: Optional prefix for parameter keys. If non-empty, keys become
             f"{prefix}{field_name}". (Callers typically pass "planner." or similar.)
-
     Returns:
         An instance of `cls` populated from ROS 2 parameters.
-
     Raises:
         RuntimeError: If a required parameter (field without a default) is missing or unset.
     """
     if not is_dataclass(cls):
         raise TypeError(f"{cls!r} is not a dataclass type")
-
     kwargs: dict[str, Any] = {}
-
     try:
         frame = sys._getframe(1)
         type_hints = get_type_hints(cls, globalns=frame.f_globals, localns=frame.f_locals)
@@ -96,26 +100,27 @@ def load(node: Node, cls: type[T], prefix: str = "") -> T:
             type_hints = get_type_hints(cls)
         except Exception:
             type_hints = {}
-
     for f in fields(cls):
         key = f"{prefix}{f.name}" if prefix else f.name
-
         field_type = type_hints.get(f.name, f.type)
-
         try:
             is_nested_dataclass = is_dataclass(field_type)
         except (TypeError, AttributeError):
             is_nested_dataclass = False
-
         if is_nested_dataclass:
             kwargs[f.name] = load(node, field_type, prefix=f"{key}.")
             continue
-
         has_default = f.default is not MISSING
         has_factory = f.default_factory is not MISSING
 
         if not has_default and not has_factory:
-            node.declare_parameter(key)
+            param_type = _TYPE_MAP.get(field_type)
+            if param_type is None:
+                raise TypeError(
+                    f"Parameter '{key}' has unsupported type {field_type!r}. "
+                    f"Supported types: {', '.join(t.__name__ for t in _TYPE_MAP)}"
+                )
+            node.declare_parameter(key, descriptor=ParameterDescriptor(type=param_type.value))
             value = node.get_parameter(key).value
             if value is None:
                 raise RuntimeError(f"Required parameter '{key}' not set for node '{node.get_name()}'")
