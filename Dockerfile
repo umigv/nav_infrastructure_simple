@@ -9,7 +9,7 @@ RUN apt-get update \
  && apt-get install -y python3-pip \
  && rosdep update \
  && rosdep install --from-paths /tmp/src/nav_infrastructure_simple --ignore-src -r -y \
- && rm -rf /var/lib/apt/lists/* /tmp/src
+ && rm -rf /tmp/src
 
 WORKDIR /
 

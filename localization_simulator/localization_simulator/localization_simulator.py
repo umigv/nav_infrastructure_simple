@@ -18,8 +18,9 @@ from nav_utils.geometry import make_quaternion_from_yaw
 from pyproj import Transformer
 from rclpy.duration import Duration
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from robot_localization.srv import FromLL
-from std_msgs.msg import Header
+from std_msgs.msg import Empty, Header
 from tf2_ros import TransformBroadcaster
 
 from .localization_simulator_config import LocalizationSimulatorConfig
@@ -39,6 +40,11 @@ class LocalizationSimulator(Node):
 
         self.odom_local_publisher = self.create_publisher(Odometry, "odom/local", 10)
         self.odom_global_publisher = self.create_publisher(Odometry, "odom/global", 10)
+        self.localization_init_publisher = self.create_publisher(
+            Empty,
+            "localization_initialized",
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+        )
 
         self.tf_broadcaster = TransformBroadcaster(self)
 
@@ -51,6 +57,7 @@ class LocalizationSimulator(Node):
         self.last_cmd_time = self.get_clock().now()
 
         self.create_timer(self.config.update_period_s, self.update_position)
+        self.localization_init_publisher.publish(Empty())
 
     def cmd_vel_callback(self, msg: Twist) -> None:
         self.cmd_vel = msg
