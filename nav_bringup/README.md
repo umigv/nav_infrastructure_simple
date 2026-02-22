@@ -18,21 +18,29 @@ ros2 launch nav_bringup sensors.launch.py
 - `base_link` → `gps_link`
 
 ## localization.launch.py
-Launches localization. In simulation mode, runs the localization simulator in place of real localization hardware.
+Launches localization. In simulation mode, runs the localization simulator in place of real localization nodes. On real
+hardware, either `ekf_local` or `enc_odom_publisher` is used for local odometry depending on `use_enc_odom`.
 
 ```
-ros2 launch nav_bringup localization.launch.py [simulation:=true]
+ros2 launch nav_bringup localization.launch.py [simulation:=true] [use_enc_odom:=true]
 ```
 
 ### Parameters
-- `simulation`: Run the localization simulator instead of real localization, default `false`
+- `simulation`: Run the localization simulator instead of real localization nodes, default `false`
+- `use_enc_odom`: Use encoder odometry integration instead of EKF for local odometry, default `false`
 
-### Subscribed Topics (simulation)
+### Subscribed Topics (real hardware, `simulation:=false`)
+- `imu/raw` (`sensor_msgs/Imu`) - Raw IMU data
+- `gps/raw` (`sensor_msgs/NavSatFix`) - Raw GPS fix
+- `enc_vel/raw` (`geometry_msgs/TwistWithCovarianceStamped`) - Encoder velocity (only when `use_enc_odom:=true`)
+
+### Subscribed Topics (simulation, `simulation:=true`)
 - `cmd_vel` (`geometry_msgs/Twist`) - Velocity command used to integrate simulated robot position
 
 ### Published Topics
-- `odom/local` (`nav_msgs/Odometry`) - Odometry in the odom frame
-- `odom/global` (`nav_msgs/Odometry`) - Odometry in the map frame
+- `odom/local` (`nav_msgs/Odometry`) - Local odometry in the odom frame
+- `odom/global` (`nav_msgs/Odometry`) - Global odometry in the map frame
+- `localization_initialized` (`std_msgs/Empty`) - Latched, published once GPS origin is set (real hardware only)
 
 ### Broadcasted TF Frames
 - `odom` → `base_link`
@@ -45,8 +53,19 @@ ros2 launch nav_bringup localization.launch.py [simulation:=true]
 Launches the navigation stack.
 
 ```
-ros2 launch nav_bringup infra.launch.py [simulation:=true]
+ros2 launch nav_bringup infra.launch.py
 ```
+
+### Subscribed Topics
+- `occ_grid` (`nav_msgs/OccupancyGrid`) - Raw occupancy grid from CV
+- `odom/local` (`nav_msgs/Odometry`) - Odometry from localization
+- `localization_initialized` (`std_msgs/Empty`) - Startup signal from localization; latched
+
+### Published Topics
+- `nav_cmd_vel` (`geometry_msgs/Twist`) - Velocity command consumed by teleop twist_mux
+
+### Service Clients
+- `fromLL` (`robot_localization/FromLL`) - Converts GPS coordinates to map-frame points; called at startup by autonav_goal_selection
 
 ## teleop.launch.py
 Launches joystick teleoperation and velocity multiplexing. twist_mux arbitrates between teleop, recovery, and autonomy
@@ -62,10 +81,10 @@ ros2 launch nav_bringup teleop.launch.py controller:=<controller>
 
 ### Controller Mappings
 For both Xbox and PS4:
-- Left joystick — linear motion
-- Right joystick — turning
-- Right shoulder button (RB / R1) — enable
-- Left shoulder button (LB / L1) — turbo
+- Left joystick - linear motion
+- Right joystick - turning
+- Right shoulder button (RB / R1) - enable
+- Left shoulder button (LB / L1) - turbo
 
 ### Subscribed Topics
 - `recovery_cmd_vel` (`geometry_msgs/Twist`) - Recovery velocity
