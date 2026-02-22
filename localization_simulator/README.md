@@ -12,8 +12,10 @@ velocity into a pose, and publishes odometry + TF frames that mimic what a real 
 - `cmd_vel` (`geometry_msgs/Twist`) - Velocity commands from twist_mux
 
 ## Published Topics
-- `/odom/local` (`nav_msgs/Odometry`) - Local odometry in the `odom` frame
-- `/odom/global` (`nav_msgs/Odometry`) - Global odometry in the `map` frame
+- `odom/local` (`nav_msgs/Odometry`) - Local odometry in the `odom` frame
+- `odom/global` (`nav_msgs/Odometry`) - Global odometry in the `map` frame
+- `localization_initialized` (`std_msgs/Empty`) - latched (transient local) signal indicating localization is ready. 
+Published immediately on startup.
 
 ## TF Broadcasts
 - `odom` → `base_link` - Robot pose from integrated cmd_vel
