@@ -5,20 +5,23 @@ from dataclasses import dataclass
 class LocalizationSimulatorConfig:
     """Configuration for the localization simulator node.
 
-    gps_origin_latitude / longitude: GPS origin in WGS84 degrees. All map-frame coordinates are relative to this.
-    update_period_s: how often the position integration + TF publishing runs.
-    cmd_vel_timeout_s: if no cmd_vel is received within this window the robot velocity is zeroed.
-    map_odom_noise_stddev: standard deviation of random offset applied to the map->odom transform each update.
-        Set to 0.0 for identity transform.
+    Attributes:
+        gps_origin_latitude: GPS origin latitude in WGS84 degrees. All map-frame coordinates are relative to this point.
+        gps_origin_longitude: GPS origin longitude in WGS84 degrees. All map-frame coordinates are relative to this point.
+        update_period_s: Period of the position integration and TF publishing timer (s).
+        cmd_vel_timeout_s: If no cmd_vel is received within this window the robot velocity is zeroed (s).
+        map_frame_id: TF frame ID for the map frame.
+        odom_frame_id: TF frame ID for the odometry frame.
+        base_frame_id: TF frame ID for the robot base frame.
     """
 
+    gps_origin_latitude: float
+    gps_origin_longitude: float
+    update_period_s: float = 0.01
+    cmd_vel_timeout_s: float = 0.5
     map_frame_id: str = "map"
     odom_frame_id: str = "odom"
     base_frame_id: str = "base_link"
-    gps_origin_latitude: float = 42.29436962024459
-    gps_origin_longitude: float = -83.70836182187283
-    update_period_s: float = 0.01
-    cmd_vel_timeout_s: float = 0.5
 
     def __post_init__(self) -> None:
         if self.update_period_s <= 0:

@@ -33,53 +33,53 @@ class LocalizationSimulator(Node):
 
         zone_number = min(60, math.floor((self.config.gps_origin_longitude + 180) / 6) + 1)
         epsg_code = f"EPSG:{zone_number + (32600 if self.config.gps_origin_latitude >= 0 else 32700)}"
-        self._to_utm = Transformer.from_crs("EPSG:4326", epsg_code, always_xy=True)
+        self.to_utm = Transformer.from_crs("EPSG:4326", epsg_code, always_xy=True)
 
-        self.create_subscription(Twist, "/cmd_vel", self._cmd_vel_callback, 10)
+        self.create_subscription(Twist, "cmd_vel", self.cmd_vel_callback, 10)
 
-        self._odom_local_publisher = self.create_publisher(Odometry, "/odom/local", 10)
-        self._odom_global_publisher = self.create_publisher(Odometry, "/odom/global", 10)
+        self.odom_local_publisher = self.create_publisher(Odometry, "odom/local", 10)
+        self.odom_global_publisher = self.create_publisher(Odometry, "odom/global", 10)
 
-        self._tf_broadcaster = TransformBroadcaster(self)
+        self.tf_broadcaster = TransformBroadcaster(self)
 
-        self.create_service(FromLL, "fromLL", self._from_ll_callback)
+        self.create_service(FromLL, "fromLL", self.from_ll_callback)
 
-        self._x = 0.0
-        self._y = 0.0
-        self._theta = 0.0
-        self._cmd_vel = Twist()
-        self._last_cmd_time = self.get_clock().now()
+        self.x = 0.0
+        self.y = 0.0
+        self.yaw = 0.0
+        self.cmd_vel = Twist()
+        self.last_cmd_time = self.get_clock().now()
 
-        self.create_timer(self.config.update_period_s, self._update_position)
+        self.create_timer(self.config.update_period_s, self.update_position)
 
-    def _cmd_vel_callback(self, msg: Twist) -> None:
-        self._cmd_vel = msg
-        self._last_cmd_time = self.get_clock().now()
+    def cmd_vel_callback(self, msg: Twist) -> None:
+        self.cmd_vel = msg
+        self.last_cmd_time = self.get_clock().now()
 
-    def _from_ll_callback(self, request: FromLL.Request, response: FromLL.Response) -> None:
-        _origin_x, _origin_y = self._to_utm.transform(self.config.gps_origin_longitude, self.config.gps_origin_latitude)
-        utm_x, utm_y = self._to_utm.transform(request.ll_point.longitude, request.ll_point.latitude)
-        response.map_point = Point(x=utm_x - _origin_x, y=utm_y - _origin_y, z=0.0)
+    def from_ll_callback(self, request: FromLL.Request, response: FromLL.Response) -> None:
+        origin_x, origin_y = self.to_utm.transform(self.config.gps_origin_longitude, self.config.gps_origin_latitude)
+        utm_x, utm_y = self.to_utm.transform(request.ll_point.longitude, request.ll_point.latitude)
+        response.map_point = Point(x=utm_x - origin_x, y=utm_y - origin_y, z=0.0)
         return response
 
-    def _update_position(self) -> None:
+    def update_position(self) -> None:
         now = self.get_clock().now()
-        if (now - self._last_cmd_time) > Duration(seconds=self.config.cmd_vel_timeout_s):
-            self._cmd_vel = Twist()
+        if (now - self.last_cmd_time) > Duration(seconds=self.config.cmd_vel_timeout_s):
+            self.cmd_vel = Twist()
 
-        self._x += self._cmd_vel.linear.x * self.config.update_period_s * math.cos(self._theta)
-        self._y += self._cmd_vel.linear.x * self.config.update_period_s * math.sin(self._theta)
-        self._theta += self._cmd_vel.angular.z * self.config.update_period_s
-        self._theta = (self._theta + math.pi) % (2 * math.pi) - math.pi  # wrap to [-pi, pi]
+        self.x += self.cmd_vel.linear.x * self.config.update_period_s * math.cos(self.yaw)
+        self.y += self.cmd_vel.linear.x * self.config.update_period_s * math.sin(self.yaw)
+        self.yaw += self.cmd_vel.angular.z * self.config.update_period_s
+        self.yaw = (self.yaw + math.pi) % (2 * math.pi) - math.pi  # wrap to [-pi, pi]
 
-        self._tf_broadcaster.sendTransform(
+        self.tf_broadcaster.sendTransform(
             [
                 TransformStamped(
                     header=Header(stamp=now.to_msg(), frame_id=self.config.odom_frame_id),
                     child_frame_id=self.config.base_frame_id,
                     transform=Transform(
-                        translation=Vector3(x=self._x, y=self._y, z=0.0),
-                        rotation=make_quaternion_from_yaw(self._theta),
+                        translation=Vector3(x=self.x, y=self.y, z=0.0),
+                        rotation=make_quaternion_from_yaw(self.yaw),
                     ),
                 ),
                 TransformStamped(
@@ -93,31 +93,31 @@ class LocalizationSimulator(Node):
             ]
         )
 
-        self._odom_local_publisher.publish(
+        self.odom_local_publisher.publish(
             Odometry(
                 header=Header(stamp=now.to_msg(), frame_id=self.config.odom_frame_id),
                 child_frame_id=self.config.base_frame_id,
                 pose=PoseWithCovariance(
                     pose=Pose(
-                        position=Point(x=self._x, y=self._y, z=0.0),
-                        orientation=make_quaternion_from_yaw(self._theta),
+                        position=Point(x=self.x, y=self.y, z=0.0),
+                        orientation=make_quaternion_from_yaw(self.yaw),
                     )
                 ),
-                twist=TwistWithCovariance(twist=self._cmd_vel),
+                twist=TwistWithCovariance(twist=self.cmd_vel),
             )
         )
 
-        self._odom_global_publisher.publish(
+        self.odom_global_publisher.publish(
             Odometry(
                 header=Header(stamp=now.to_msg(), frame_id=self.config.map_frame_id),
                 child_frame_id=self.config.base_frame_id,
                 pose=PoseWithCovariance(
                     pose=Pose(
-                        position=Point(x=self._x, y=self._y, z=0.0),
-                        orientation=make_quaternion_from_yaw(self._theta),
+                        position=Point(x=self.x, y=self.y, z=0.0),
+                        orientation=make_quaternion_from_yaw(self.yaw),
                     )
                 ),
-                twist=TwistWithCovariance(twist=self._cmd_vel),
+                twist=TwistWithCovariance(twist=self.cmd_vel),
             )
         )
 
