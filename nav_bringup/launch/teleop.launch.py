@@ -33,15 +33,22 @@ def launch_setup(context, *args, **kwargs) -> list[LaunchDescriptionEntity]:
             executable="teleop_node",
             name="teleop_twist_joy_node",
             output="screen",
-            parameters=[teleop_config_file, {"frame": FRAMES["base_frame"]}],
-            remappings=[("cmd_vel", "teleop_cmd_vel")],
+            parameters=[
+                teleop_config_file,
+                {"frame": FRAMES["base_frame"]},
+            ],
+            remappings=[
+                ("cmd_vel", "teleop_cmd_vel"),
+            ],
         ),
         Node(
             package="twist_mux",
             executable="twist_mux",
             name="twist_mux_node",
             output="screen",
-            parameters=[twist_mux_config_file],
+            parameters=[
+                twist_mux_config_file,
+            ],
             remappings=[
                 ("cmd_vel_out", "cmd_vel"),
             ],

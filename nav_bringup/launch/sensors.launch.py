@@ -17,7 +17,11 @@ def generate_launch_description() -> LaunchDescription:
         executable="vectornav_node",
         name="vectornav",
         output="screen",
-        parameters=[imu_params, {"frame_id": FRAMES["imu_frame"], "map_frame_id": FRAMES["map_frame"]}],
+        parameters=[
+            imu_params,
+            {"frame_id": FRAMES["imu_frame"]},
+            {"map_frame_id": FRAMES["map_frame"]},
+        ],
         remappings=[
             ("vectornav/data", "imu/raw"),
         ],
@@ -28,7 +32,10 @@ def generate_launch_description() -> LaunchDescription:
         executable="gps_publisher",
         name="gps_publisher",
         output="screen",
-        parameters=[gps_params, {"gps_frame_id": FRAMES["gps_frame"]}],
+        parameters=[
+            gps_params,
+            {"gps_frame_id": FRAMES["gps_frame"]},
+        ],
         remappings=[
             ("gps", "gps/raw"),
         ],

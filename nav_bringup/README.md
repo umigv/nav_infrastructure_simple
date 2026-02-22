@@ -14,7 +14,7 @@ ros2 launch nav_bringup sensors.launch.py
 - `gps/raw` (`sensor_msgs/NavSatFix`) - Raw GPS fix
 
 ## infra.launch.py
-Launches the autonomy stack.
+Launches the navigation stack.
 
 ```
 ros2 launch nav_bringup infra.launch.py [simulation:=true]

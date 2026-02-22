@@ -17,7 +17,7 @@ The occupancy grid transformed by the node has the standard ROS2 convention, whe
 - +x is forward, +y is left of the robot
 - info.origin is the bottom left corner of the occupancy grid
 
-For example, after transform, with a 2 wide 3 tall grid:
+For example, after transform, with a 3 wide 2 tall grid:
 
 ```
         1d indexing by (y * width + x):
