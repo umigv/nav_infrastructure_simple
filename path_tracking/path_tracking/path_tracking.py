@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import nav_utils.config
 import numpy as np
 import rclpy
-from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion, Twist, TwistStamped, Vector3
+from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion, Twist, Vector3
 from nav_msgs.msg import Odometry, Path
 from nav_utils.geometry import get_yaw_radians_from_quaternion
 from rclpy.node import Node
@@ -64,7 +64,7 @@ class PathTracking(Node):
         self.create_subscription(Odometry, "odom", self.odom_callback, 10)
         self.create_subscription(Path, "path", self.path_callback, 10)
 
-        self.cmd_vel_publisher = self.create_publisher(TwistStamped, "nav_cmd_vel", 10)
+        self.cmd_vel_publisher = self.create_publisher(Twist, "nav_cmd_vel", 10)
         self.path_publisher = self.create_publisher(Path, "smoothed_path", 10)
 
         self.create_timer(self.config.control_period_s, self.control_loop)
@@ -172,30 +172,24 @@ class PathTracking(Node):
         if self.pose is None or not self.smoothed_path_points:
             return
 
-        header = Header(stamp=self.get_clock().now().to_msg(), frame_id=self.config.base_frame_id)
         lookahead_distance = self.compute_lookahead_distance()
         if (self.smoothed_path_points[-1] - self.pose.point).mag() < lookahead_distance:
             self.get_logger().info("Reached goal - stopping")
             self.smoothed_path_points = []
-            self.cmd_vel_publisher.publish(TwistStamped(header=header))
+            self.cmd_vel_publisher.publish(Twist())
             return
 
         lookahead_point = self.find_lookahead_point(lookahead_distance) or self.find_forward_point(lookahead_distance)
         if lookahead_point is None:
             self.get_logger().warn("No valid lookahead point found - stopping")
-            self.cmd_vel_publisher.publish(TwistStamped(header=header))
+            self.cmd_vel_publisher.publish(Twist())
             return
 
         curvature = 2 * lookahead_point.y / (lookahead_point.x**2 + lookahead_point.y**2)
         linear = lookahead_distance * self.config.linear_speed_gain
         angular = linear * curvature
         scale = min(1.0, self.config.max_angular_speed_radps / abs(angular)) if angular != 0.0 else 1.0
-        self.cmd_vel_publisher.publish(
-            TwistStamped(
-                header=header,
-                twist=Twist(linear=Vector3(x=linear * scale), angular=Vector3(z=angular * scale)),
-            )
-        )
+        self.cmd_vel_publisher.publish(Twist(linear=Vector3(x=linear * scale), angular=Vector3(z=angular * scale)))
 
 
 def main() -> None:

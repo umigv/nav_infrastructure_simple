@@ -43,14 +43,14 @@ For both Xbox and PS4:
 - Left shoulder button (LB / L1) — turbo
 
 ### Subscribed Topics
-- `teleop_cmd_vel` (`geometry_msgs/TwistStamped`) - Joystick velocity (priority 3)
-- `recovery_cmd_vel` (`geometry_msgs/TwistStamped`) - Recovery velocity (priority 2)
-- `nav_cmd_vel` (`geometry_msgs/TwistStamped`) - Autonomy velocity (priority 1)
+- `teleop_cmd_vel` (`geometry_msgs/Twist`) - Joystick velocity (priority 3)
+- `recovery_cmd_vel` (`geometry_msgs/Twist`) - Recovery velocity (priority 2)
+- `nav_cmd_vel` (`geometry_msgs/Twist`) - Autonomy velocity (priority 1)
 
 ### Published Topics
 - `joy` (`sensor_msgs/Joy`) - Raw joystick input
-- `teleop_cmd_vel` (`geometry_msgs/TwistStamped`) - Joystick velocity command
-- `cmd_vel` (`geometry_msgs/TwistStamped`) - Multiplexed output velocity
+- `teleop_cmd_vel` (`geometry_msgs/Twist`) - Joystick velocity command
+- `cmd_vel` (`geometry_msgs/Twist`) - Multiplexed output velocity
 
 ### Velocity Multiplexing
 | Priority | Topic | Source | Timeout |

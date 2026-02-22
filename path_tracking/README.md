@@ -8,7 +8,7 @@ Subscribes to a planned path and odometry, fits a B-spline through the path wayp
 - `path` (`nav_msgs/msg/Path`) — Planned path to follow
 
 ## Published Topics
-- `nav_cmd_vel` (`geometry_msgs/msg/TwistStamped`) — Velocity command for the robot base
+- `nav_cmd_vel` (`geometry_msgs/msg/Twist`) — Velocity command for the robot base
 - `smoothed_path` (`nav_msgs/msg/Path`) — B-spline smoothed version of the received path, for visualization
 
 ## Config Parameters
