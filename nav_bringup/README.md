@@ -89,6 +89,17 @@ Launches the navigation stack.
 ros2 launch nav_bringup navigation.launch.py
 ```
 
+### Subscribed Topics
+- `occ_grid` (`nav_msgs/OccupancyGrid`) - Raw occupancy grid from CV
+- `odom/local` (`nav_msgs/Odometry`) - Odometry from localization
+- `localization_initialized` (`std_msgs/Empty`) - Startup signal from localization; latched
+
+### Published Topics
+- `nav_cmd_vel` (`geometry_msgs/Twist`) - Velocity command consumed by twist_mux
+
+### Service Clients
+- `fromLL` (`robot_localization/FromLL`) - Converts GPS coordinates to map-frame points; called at startup by autonav_goal_selection
+
 
 ## teleop.launch.py
 Launches joystick teleoperation
