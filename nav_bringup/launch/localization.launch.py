@@ -24,6 +24,12 @@ def generate_launch_description() -> LaunchDescription:
                 "gps_origin_longitude": GPS_ORIGIN_SIM["longitude"],
             },
         ],
+        remappings=[
+            ("cmd_vel", "cmd_vel"),
+            ("odom/local", "odom/local"),
+            ("odom/global", "odom/global"),
+            ("fromLL", "fromLL"),
+        ],
     )
 
     return LaunchDescription(
