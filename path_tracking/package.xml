@@ -3,14 +3,17 @@
 <package format="3">
   <name>path_tracking</name>
   <version>0.1.0</version>
-  <description>Pure pursuit path tracking for mobile robots</description>
-  <maintainer email="annanova@umich.edu">arv</maintainer>
+  <description>Path tracking for mobile robots using pure pursuit</description>
+  <maintainer email="annanova@umich.edu">Anna Novak</maintainer>
+  <maintainer email="erikachn@umich.edu">Erika Chen</maintainer>
   <license>Apache-2.0</license>
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
   <exec_depend>nav_utils</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-scipy</exec_depend>
 
   <export>

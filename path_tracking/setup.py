@@ -14,7 +14,7 @@ setup(
     zip_safe=True,
     maintainer="Anna Novak, Erika Chen",
     maintainer_email="annanova@umich.edu, erikachn@umich.edu",
-    description="Pure pursuit path tracking for mobile robots",
+    description="Path tracking for mobile robots using pure pursuit",
     license="Apache-2.0",
     extras_require={
         "test": [
@@ -23,7 +23,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "pure_pursuit = path_tracking.pure_pursuit:main",
+            "path_tracking = path_tracking.path_tracking:main",
         ],
     },
 )

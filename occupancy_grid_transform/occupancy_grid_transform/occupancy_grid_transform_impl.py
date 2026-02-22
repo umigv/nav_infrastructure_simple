@@ -1,12 +1,10 @@
-from __future__ import annotations
-
 import math
 from itertools import product
 
 import numpy as np
 from nav_msgs.msg import OccupancyGrid
 
-from .occupancy_grid_trasform_config import InflationParams
+from .occupancy_grid_transform_config import InflationParams
 
 
 def cv_occupancy_grid_to_ros_grid(grid: OccupancyGrid) -> np.ndarray:
@@ -61,11 +59,11 @@ def cv_occupancy_grid_to_ros_grid(grid: OccupancyGrid) -> np.ndarray:
 
 def add_border(grid: np.ndarray) -> np.ndarray:
     """
-    Add a 1-cell occupied border on all edges except the bottom (closest to robot).
+    Add a 1-cell occupied border on the top, bottom, and right edges of the grid.
 
-    Sets the top row, left column, and right column to 100 (occupied). The bottom row (y=0) is
-    left untouched since it is nearest to the robot. When followed by `inflate_grid`, the border
-    produces a soft falloff that discourages planning near grid edges.
+    Sets the top row, bottom row, and right column to 100 (occupied). The left column (y=0, closest
+    to the robot) is left untouched. When followed by `inflate_grid`, the border produces a soft
+    falloff that discourages planning near grid edges.
 
     Args:
         grid: 2D occupancy grid of shape `(height, width)`.

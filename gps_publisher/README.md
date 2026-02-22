@@ -1,6 +1,6 @@
 # GPS UBX → NavSatFix Publisher
-
-This package reads GNSS data in UBX protocol from our **u-blox ZED-F9P** GPS over USB and publishes `sensor_msgs/NavSatFix` messages for use with localization.
+This package reads GNSS data in UBX protocol from our **u-blox ZED-F9P** GPS over USB and publishes 
+`sensor_msgs/NavSatFix` messages for use with localization.
 
 ## Behavior / Filtering
 We only publish message UBX `NAV-PVT`/`NAV2-PVT` that indicates a valid position solution:
@@ -8,13 +8,21 @@ We only publish message UBX `NAV-PVT`/`NAV2-PVT` that indicates a valid position
 - `gnssFixOk == 1`
 - `invalidLlh == 0`
 
-Timestamps are taken from GNSS time when valid (`validDate && validTime && fullyResolved`), otherwise we fall back to ROS2 node time.
+Timestamps are taken from GNSS time when valid (`validDate && validTime && fullyResolved`), otherwise we fall back to 
+ROS2 node time.
 
 Covariance is filled using u-blox accuracy fields:
 - `hAcc` / `vAcc` (mm → meters → meters²), published as diagonal covariance.
 
 ## Published Topics
-`gps` (`sensor_msgs/NavSatFix`) - processed GPS fix messages
+- `gps` (`sensor_msgs/NavSatFix`) - processed GPS fix messages
+
+## Config Parameters
+| Parameter | Default | Description |
+|---|---|---|
+| `serial_port` | `/dev/ttyACM0` | Serial port device path for the GPS receiver |
+| `poll_period_s` | `0.1` | Period in seconds between GPS polls |
+| `gps_frame_id` | `gps_link` | TF frame ID used in published GPS messages |
 
 ## GPS Configurations
 > Note: Message “rate” in `CFG-MSG` is **messages per navigation cycle**.  

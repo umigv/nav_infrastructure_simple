@@ -5,7 +5,7 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-def generate_launch_description():
+def generate_launch_description() -> LaunchDescription:
     simulation_arg = DeclareLaunchArgument(
         "simulation", default_value="false", description="Whether to run in simulation mode"
     )
@@ -29,6 +29,6 @@ def generate_launch_description():
                     ("transformed_occupancy_grid", "inflated_occupancy_grid"),
                 ],
             ),
-            Node(package="path_tracking", executable="pure_pursuit", name="pure_pursuit"),
+            Node(package="path_tracking", executable="path_tracking", name="path_tracking"),
         ]
     )

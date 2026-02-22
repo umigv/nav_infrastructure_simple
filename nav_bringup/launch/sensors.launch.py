@@ -7,7 +7,7 @@ from launch_ros.substitutions import FindPackageShare
 from nav_bringup.global_config import FRAMES
 
 
-def generate_launch_description():
+def generate_launch_description() -> LaunchDescription:
     bringup_share = FindPackageShare("nav_bringup")
     imu_params = PathJoinSubstitution([bringup_share, "config", "imu.yaml"])
     gps_params = PathJoinSubstitution([bringup_share, "config", "gps.yaml"])

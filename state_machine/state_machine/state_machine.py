@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from enum import Enum
 
 import rclpy
@@ -38,10 +36,10 @@ class StateMachine(Node):
         self.last_state: State | None = None
 
         self.set_ramp_service = self.create_service(SetBool, "state/set_ramp", self.set_ramp_callback)
-        self.ramp_enabled = False
+        self.ramp_enabled: bool = False
 
         self.set_recovery_service = self.create_service(SetBool, "state/set_recovery", self.set_recovery_callback)
-        self.recovery_enabled = False
+        self.recovery_enabled: bool = False
 
         self.publish_state_if_changed(reason="init")
 
@@ -54,7 +52,7 @@ class StateMachine(Node):
 
         return State.NORMAL
 
-    def publish_state_if_changed(self, reason: str):
+    def publish_state_if_changed(self, reason: str) -> None:
         state = self.compute_state()
         if state == self.last_state:
             return

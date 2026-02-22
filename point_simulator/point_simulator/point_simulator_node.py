@@ -3,7 +3,7 @@ import time
 from math import cos, pi, sin
 
 import rclpy
-from geometry_msgs.msg import TransformStamped, Twist
+from geometry_msgs.msg import TransformStamped, TwistStamped
 from nav_msgs.msg import Odometry
 from pyproj import Transformer
 from rclpy.node import Node
@@ -34,7 +34,7 @@ def lat_long_meters_to_degrees(x: float, y: float) -> tuple[float, float]:
 class PointSimulator(Node):
     def __init__(self):
         super().__init__("point_simulator")
-        self.sub = self.create_subscription(Twist, "/joy_cmd_vel", self.cmd_vel_callback, 10)
+        self.sub = self.create_subscription(TwistStamped, "/cmd_vel", self.cmd_vel_callback, 10)
         self.odom_pub = self.create_publisher(Odometry, "/odom", 10)
         self.marker_pub = self.create_publisher(Marker, "/visualization_marker", 10)
         self.gps_pub = self.create_publisher(NavSatFix, "/gps_coords", 10)
@@ -64,10 +64,10 @@ class PointSimulator(Node):
 
         self.destroy_subscription(self.origin_sub)
 
-    def cmd_vel_callback(self, msg):
+    def cmd_vel_callback(self, msg: TwistStamped):
         """Sets the robot velocity and updates when robot last recieved command. Called from the joystick subcription."""
-        self.vx = msg.linear.x
-        self.vtheta = msg.angular.z
+        self.vx = msg.twist.linear.x
+        self.vtheta = msg.twist.angular.z
         self.last_cmd_time_nanoseconds = self.get_clock().now().nanoseconds
 
     def update_position(self):

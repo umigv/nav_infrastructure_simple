@@ -1,18 +1,17 @@
-from __future__ import annotations
-
 import os
 
 from ament_index_python.packages import get_package_share_directory
-from launch import LaunchDescription
+from launch import LaunchDescription, LaunchDescriptionEntity
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from nav_bringup.global_config import FRAMES
 
 CONTROLLERS = ("ps4", "xbox")
 
 
-def _launch_setup(context, *args, **kwargs):
-    pkg_share = get_package_share_directory("teleop")
+def launch_setup(context, *args, **kwargs) -> list[LaunchDescriptionEntity]:
+    pkg_share = get_package_share_directory("nav_bringup")
     controller = LaunchConfiguration("controller").perform(context).strip().lower()
     teleop_config_file = os.path.join(pkg_share, "config", f"teleop_{controller}.yaml")
     twist_mux_config_file = os.path.join(pkg_share, "config", "twist_mux.yaml")
@@ -34,7 +33,7 @@ def _launch_setup(context, *args, **kwargs):
             executable="teleop_node",
             name="teleop_twist_joy_node",
             output="screen",
-            parameters=[teleop_config_file],
+            parameters=[teleop_config_file, {"frame": FRAMES["base_frame"]}],
             remappings=[("cmd_vel", "teleop_cmd_vel")],
         ),
         Node(
@@ -63,6 +62,6 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="/dev/input/js0",
                 description="Device of joystick",
             ),
-            OpaqueFunction(function=_launch_setup),
+            OpaqueFunction(function=launch_setup),
         ]
     )

@@ -8,12 +8,12 @@ from rclpy.node import Node
 from std_msgs.msg import Header
 from tf2_ros import Buffer, TransformListener
 
+from .occupancy_grid_transform_config import OccupancyGridTransformConfig
 from .occupancy_grid_transform_impl import add_border, cv_occupancy_grid_to_ros_grid, inflate_grid
-from .occupancy_grid_trasform_config import OccupancyGridTransformConfig
 
 
 class OccupancyGridTransform(Node):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("occupancy_grid_transform")
 
         self.config: OccupancyGridTransformConfig = nav_utils.config.load(self, OccupancyGridTransformConfig)

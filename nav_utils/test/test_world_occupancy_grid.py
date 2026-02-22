@@ -1,6 +1,5 @@
 import math
 
-import numpy as np
 from geometry_msgs.msg import Point
 from nav_msgs.msg import MapMetaData, OccupancyGrid
 from nav_utils.geometry import make_pose, point_is_close
@@ -15,7 +14,7 @@ def make_occupancy_grid() -> OccupancyGrid:
             height=6,
             origin=make_pose(x=2.269615242270663, y=1.0009618943233418, yaw=math.pi / 6),
         ),
-        data=np.zeros(36).astype(np.int8).tolist(),
+        data=[0] * 36,
     )
 
 
@@ -39,9 +38,9 @@ def test_state():
 
     grid = WorldOccupancyGrid(occupancy_grid)
 
-    assert grid.state(Point(x=2.5, y=2.0, z=0.0)).isDrivable
-    assert not grid.state(Point(x=3.25, y=3.5, z=0.0)).isDrivable
-    assert grid.state(Point(x=2.0, y=1.0, z=0.0)).isUnknown
+    assert grid.state(Point(x=2.5, y=2.0, z=0.0)).is_drivable
+    assert not grid.state(Point(x=3.25, y=3.5, z=0.0)).is_drivable
+    assert grid.state(Point(x=2.0, y=1.0, z=0.0)).is_unknown
 
 
 def test_neighbors():
@@ -82,11 +81,11 @@ def test_all_in_bound():
     grid = WorldOccupancyGrid(
         OccupancyGrid(
             info=MapMetaData(resolution=2.0, width=2, height=2, origin=make_pose(x=0.0, y=0.0, yaw=0.0)),
-            data=np.zeros(4).astype(np.int8).tolist(),
+            data=[0] * 4,
         )
     )
 
-    points = list(grid.inBoundPoints())
+    points = list(grid.in_bound_points())
     expected = [
         Point(x=1.0, y=1.0, z=0.0),
         Point(x=3.0, y=1.0, z=0.0),

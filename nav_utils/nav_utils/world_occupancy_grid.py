@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -15,7 +17,7 @@ class CellState:
     Discrete occupancy state of a grid cell.
     """
 
-    value: int  # -1 (unknown) or 0-100 (probability occupied)
+    value: int  # -1 (unknown) or 0-100 (probability occupied) or 127 (self-drive goal)
 
     UNKNOWN_VALUE: ClassVar[int] = -1
     DRIVABLE_THRESHOLD: ClassVar[int] = 30
@@ -29,27 +31,27 @@ class CellState:
             )
 
     @classmethod
-    def unknown_cell(cls) -> "CellState":
+    def unknown_cell(cls) -> CellState:
         return cls(cls.UNKNOWN_VALUE)
 
     @property
-    def isDrivable(self) -> bool:
+    def is_drivable(self) -> bool:
         """
         True if the cell can be traversed by the robot
         """
-        return 0 <= self.value <= CellState.DRIVABLE_THRESHOLD or self.isSelfDriveGoal
+        return 0 <= self.value <= CellState.DRIVABLE_THRESHOLD or self.is_self_drive_goal
 
     @property
-    def isUnknown(self) -> bool:
+    def is_unknown(self) -> bool:
         """
         True if the cell value is unknown
         """
         return self.value == CellState.UNKNOWN_VALUE
 
     @property
-    def isSelfDriveGoal(self) -> bool:
+    def is_self_drive_goal(self) -> bool:
         """
-        True if the cell is cell drive goal
+        True if the cell is a self-drive goal
         """
         return self.value == CellState.SELF_DRIVE_GOAL_VALUE
 
@@ -109,12 +111,12 @@ class WorldOccupancyGrid:
 
         return CellState(self._occupancy_grid.data[grid_y * self._occupancy_grid.info.width + grid_x])
 
-    def inBoundPoints(self) -> Iterator[Point]:
+    def in_bound_points(self) -> Iterator[Point]:
         """
         Generate a point in all in bound grids
 
         Yields:
-            World-coordinate points at the centers of neighboring grid cells.
+            World-coordinate points at the centers of all in-bound grid cells.
         """
         for x in range(self._occupancy_grid.info.width):
             for y in range(self._occupancy_grid.info.height):
