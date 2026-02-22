@@ -49,15 +49,38 @@ ros2 launch nav_bringup sensors.launch.py
 - `base_link` → `gps_link`
 
 
+## localization.launch.py
+Launches localization. In simulation mode, runs the localization simulator in place of real localization nodes.
+
+```
+ros2 launch nav_bringup localization.launch.py [simulation:=true]
+```
+
+### Parameters
+- `simulation`: Run the localization simulator instead of real localization, default `false`
+
+### Subscribed Topics (simulation, `simulation:=true`)
+- `cmd_vel` (`geometry_msgs/Twist`) - Velocity command used to integrate simulated robot position
+
+### Published Topics
+- `odom/local` (`nav_msgs/Odometry`) - Local odometry in the odom frame
+- `odom/global` (`nav_msgs/Odometry`) - Global odometry in the map frame
+- `localization_initialized` (`std_msgs/Empty`) - Latched, published once GPS origin is set (real hardware only)
+
+### Broadcasted TF Frames
+- `odom` → `base_link`
+- `map` → `odom`
+
+### Services
+- `fromLL` (`robot_localization/FromLL`) - Converts GPS latitude/longitude to a map-frame point
+
+
 ## navigation.launch.py
 Launches the navigation stack.
 
 ```
-ros2 launch nav_bringup navigation.launch.py [simulation:=true]
+ros2 launch nav_bringup navigation.launch.py
 ```
-
-### Parameters
-- `simulation`: Launch point simulator instead of real sensors, default `false`
 
 
 ## teleop.launch.py
