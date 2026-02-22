@@ -53,8 +53,19 @@ ros2 launch nav_bringup localization.launch.py [simulation:=true] [use_enc_odom:
 Launches the navigation stack.
 
 ```
-ros2 launch nav_bringup infra.launch.py [simulation:=true]
+ros2 launch nav_bringup infra.launch.py
 ```
+
+### Subscribed Topics
+- `occ_grid` (`nav_msgs/OccupancyGrid`) - Raw occupancy grid from CV
+- `odom/local` (`nav_msgs/Odometry`) - Odometry from localization
+- `localization_initialized` (`std_msgs/Empty`) - Startup signal from localization; latched
+
+### Published Topics
+- `nav_cmd_vel` (`geometry_msgs/Twist`) - Velocity command consumed by teleop twist_mux
+
+### Service Clients
+- `fromLL` (`robot_localization/FromLL`) - Converts GPS coordinates to map-frame points; called at startup by autonav_goal_selection
 
 ## teleop.launch.py
 Launches joystick teleoperation and velocity multiplexing. twist_mux arbitrates between teleop, recovery, and autonomy
@@ -70,10 +81,10 @@ ros2 launch nav_bringup teleop.launch.py controller:=<controller>
 
 ### Controller Mappings
 For both Xbox and PS4:
-- Left joystick — linear motion
-- Right joystick — turning
-- Right shoulder button (RB / R1) — enable
-- Left shoulder button (LB / L1) — turbo
+- Left joystick - linear motion
+- Right joystick - turning
+- Right shoulder button (RB / R1) - enable
+- Left shoulder button (LB / L1) - turbo
 
 ### Subscribed Topics
 - `recovery_cmd_vel` (`geometry_msgs/Twist`) - Recovery velocity
