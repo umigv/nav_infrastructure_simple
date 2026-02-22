@@ -13,15 +13,40 @@ ros2 launch nav_bringup sensors.launch.py
 - `imu/raw` (`sensor_msgs/Imu`) - Raw IMU data
 - `gps/raw` (`sensor_msgs/NavSatFix`) - Raw GPS fix
 
+### Broadcasted TF Frames
+- `base_link` → `imu_link`
+- `base_link` → `gps_link`
+
+## localization.launch.py
+Launches localization. In simulation mode, runs the localization simulator in place of real localization hardware.
+
+```
+ros2 launch nav_bringup localization.launch.py [simulation:=true]
+```
+
+### Parameters
+- `simulation`: Run the localization simulator instead of real localization, default `false`
+
+### Subscribed Topics (simulation)
+- `cmd_vel` (`geometry_msgs/Twist`) - Velocity command used to integrate simulated robot position
+
+### Published Topics
+- `odom/local` (`nav_msgs/Odometry`) - Odometry in the odom frame
+- `odom/global` (`nav_msgs/Odometry`) - Odometry in the map frame
+
+### Broadcasted TF Frames
+- `odom` → `base_link`
+- `map` → `odom`
+
+### Services
+- `fromLL` (`robot_localization/FromLL`) - Converts GPS latitude/longitude to a map-frame point
+
 ## infra.launch.py
 Launches the navigation stack.
 
 ```
 ros2 launch nav_bringup infra.launch.py [simulation:=true]
 ```
-
-### Parameters
-- `simulation`: Launch point simulator instead of real sensors, default `false`
 
 ## teleop.launch.py
 Launches joystick teleoperation and velocity multiplexing. twist_mux arbitrates between teleop, recovery, and autonomy
@@ -43,9 +68,8 @@ For both Xbox and PS4:
 - Left shoulder button (LB / L1) — turbo
 
 ### Subscribed Topics
-- `teleop_cmd_vel` (`geometry_msgs/Twist`) - Joystick velocity (priority 3)
-- `recovery_cmd_vel` (`geometry_msgs/Twist`) - Recovery velocity (priority 2)
-- `nav_cmd_vel` (`geometry_msgs/Twist`) - Autonomy velocity (priority 1)
+- `recovery_cmd_vel` (`geometry_msgs/Twist`) - Recovery velocity
+- `nav_cmd_vel` (`geometry_msgs/Twist`) - Autonomy velocity
 
 ### Published Topics
 - `joy` (`sensor_msgs/Joy`) - Raw joystick input
