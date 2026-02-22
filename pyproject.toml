@@ -25,6 +25,7 @@ exclude = [
     "build",
     "install",
     "log",
+    "imu_publisher",  # git submodule
     "**/__pycache__",
     "**/*.egg-info",
     "**/.pytest_cache",

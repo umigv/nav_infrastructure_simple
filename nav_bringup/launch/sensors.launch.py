@@ -7,7 +7,7 @@ from launch_ros.substitutions import FindPackageShare
 from nav_bringup.global_config import FRAMES
 
 
-def generate_launch_description():
+def generate_launch_description() -> LaunchDescription:
     bringup_share = FindPackageShare("nav_bringup")
     imu_params = PathJoinSubstitution([bringup_share, "config", "imu.yaml"])
     gps_params = PathJoinSubstitution([bringup_share, "config", "gps.yaml"])
@@ -17,7 +17,11 @@ def generate_launch_description():
         executable="vectornav_node",
         name="vectornav",
         output="screen",
-        parameters=[imu_params, {"frame_id": FRAMES["imu_frame"], "map_frame_id": FRAMES["map_frame"]}],
+        parameters=[
+            imu_params,
+            {"frame_id": FRAMES["imu_frame"]},
+            {"map_frame_id": FRAMES["map_frame"]},
+        ],
         remappings=[
             ("vectornav/data", "imu/raw"),
         ],
@@ -28,7 +32,10 @@ def generate_launch_description():
         executable="gps_publisher",
         name="gps_publisher",
         output="screen",
-        parameters=[gps_params, {"gps_frame_id": FRAMES["gps_frame"]}],
+        parameters=[
+            gps_params,
+            {"gps_frame_id": FRAMES["gps_frame"]},
+        ],
         remappings=[
             ("gps", "gps/raw"),
         ],

@@ -60,11 +60,14 @@ if [[ "${#ONLY_PKGS[@]}" -gt 0 && "${#IGNORE_PKGS[@]}" -gt 0 ]]; then
 fi
 
 echo "==> Discovering ROS packages"
+mapfile -t SUBMODULE_DIRS < <(git submodule foreach --quiet 'echo $displaypath' 2>/dev/null || true)
+
 mapfile -t ALL_PKG_DIRS < <(
   find . -mindepth 2 -maxdepth 2 -type f -name package.xml -print \
     | sed 's|^\./||' \
     | xargs -n1 dirname \
-    | sort -u
+    | sort -u \
+    | grep -vxF "$(printf '%s\n' "${SUBMODULE_DIRS[@]}")" || true
 )
 
 if [[ "${#ALL_PKG_DIRS[@]}" -eq 0 ]]; then

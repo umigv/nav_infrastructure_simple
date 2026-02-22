@@ -41,8 +41,8 @@ class SelfDriveGoalSelection(Node):
         if self.grid is None:
             return None
 
-        for point in self.grid.inBoundPoints():
-            if self.grid.state(point).isSelfDriveGoal:
+        for point in self.grid.in_bound_points():
+            if self.grid.state(point).is_self_drive_goal:
                 return point
 
         return None

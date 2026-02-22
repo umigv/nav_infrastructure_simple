@@ -16,6 +16,9 @@
   <exec_depend>goal_selection</exec_depend>
   <exec_depend>occupancy_grid_transform</exec_depend>
   <exec_depend>path_tracking</exec_depend>
+  <exec_depend>joy</exec_depend>
+  <exec_depend>teleop_twist_joy</exec_depend>
+  <exec_depend>twist_mux</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

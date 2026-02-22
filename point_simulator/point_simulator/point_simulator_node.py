@@ -34,7 +34,7 @@ def lat_long_meters_to_degrees(x: float, y: float) -> tuple[float, float]:
 class PointSimulator(Node):
     def __init__(self):
         super().__init__("point_simulator")
-        self.sub = self.create_subscription(Twist, "/joy_cmd_vel", self.cmd_vel_callback, 10)
+        self.sub = self.create_subscription(Twist, "/cmd_vel", self.cmd_vel_callback, 10)
         self.odom_pub = self.create_publisher(Odometry, "/odom", 10)
         self.marker_pub = self.create_publisher(Marker, "/visualization_marker", 10)
         self.gps_pub = self.create_publisher(NavSatFix, "/gps_coords", 10)
@@ -64,7 +64,7 @@ class PointSimulator(Node):
 
         self.destroy_subscription(self.origin_sub)
 
-    def cmd_vel_callback(self, msg):
+    def cmd_vel_callback(self, msg: Twist):
         """Sets the robot velocity and updates when robot last recieved command. Called from the joystick subcription."""
         self.vx = msg.linear.x
         self.vtheta = msg.angular.z

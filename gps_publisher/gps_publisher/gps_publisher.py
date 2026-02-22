@@ -3,10 +3,11 @@ from datetime import datetime, timezone
 import nav_utils.config
 import rclpy
 from builtin_interfaces.msg import Time
-from pyubx2 import UBX_PROTOCOL, UBXReader
+from pyubx2 import UBX_PROTOCOL, UBXMessage, UBXReader
 from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix, NavSatStatus
 from serial import Serial
+from std_msgs.msg import Header
 
 from .gps_publisher_config import GpsPublisherConfig
 
@@ -15,19 +16,19 @@ UBX_FIX_TYPE_TIME_ONLY = 5
 
 
 class GpsPublisher(Node):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("gps_publisher")
 
-        self.config = nav_utils.config.load(self, GpsPublisherConfig)
+        self.config: GpsPublisherConfig = nav_utils.config.load(self, GpsPublisherConfig)
 
         self.publisher = self.create_publisher(NavSatFix, "gps", 10)
 
         self.stream = Serial(self.config.serial_port, 460800, timeout=0.1)
         self.ubx_reader = UBXReader(self.stream, protfilter=UBX_PROTOCOL)
 
-        self.create_timer(1.0 / self.config.poll_rate_hz, self.poll)
+        self.create_timer(self.config.poll_period_s, self.poll)
 
-    def poll(self):
+    def poll(self) -> None:
         try:
             _, msg = self.ubx_reader.read()
         except Exception as e:
@@ -55,26 +56,28 @@ class GpsPublisher(Node):
         self.get_logger().debug(f"Publishing GPS Msg: {msg}")
         self.publish_from_pvt(msg)
 
-    def publish_from_pvt(self, data):
-        fix = NavSatFix()
-        fix.header.stamp = self.resolve_timestamp(data)
-        fix.header.frame_id = self.config.gps_frame_id
-
-        fix.status.status = NavSatStatus.STATUS_GBAS_FIX if data.diffSoln else NavSatStatus.STATUS_FIX
-        fix.status.service = NavSatStatus.SERVICE_GPS
-
-        fix.latitude = data.lat
-        fix.longitude = data.lon
-        fix.altitude = data.hMSL * 1e-3
-
-        fix.position_covariance_type = NavSatFix.COVARIANCE_TYPE_DIAGONAL_KNOWN
+    def publish_from_pvt(self, data: UBXMessage) -> None:
         hcov = max(data.hAcc * 1e-3, 0.05) ** 2
         vcov = max(data.vAcc * 1e-3, 0.08) ** 2
-        fix.position_covariance = [hcov, 0.0, 0.0, 0.0, hcov, 0.0, 0.0, 0.0, vcov]
+        self.publisher.publish(
+            NavSatFix(
+                header=Header(
+                    stamp=self.resolve_timestamp(data),
+                    frame_id=self.config.gps_frame_id,
+                ),
+                status=NavSatStatus(
+                    status=NavSatStatus.STATUS_GBAS_FIX if data.diffSoln else NavSatStatus.STATUS_FIX,
+                    service=NavSatStatus.SERVICE_GPS,
+                ),
+                latitude=data.lat,
+                longitude=data.lon,
+                altitude=data.hMSL * 1e-3,
+                position_covariance=[hcov, 0.0, 0.0, 0.0, hcov, 0.0, 0.0, 0.0, vcov],
+                position_covariance_type=NavSatFix.COVARIANCE_TYPE_DIAGONAL_KNOWN,
+            )
+        )
 
-        self.publisher.publish(fix)
-
-    def resolve_timestamp(self, data) -> Time:
+    def resolve_timestamp(self, data: UBXMessage) -> Time:
         if not (data.validDate and data.validTime and data.fullyResolved):
             return self.get_clock().now().to_msg()
 

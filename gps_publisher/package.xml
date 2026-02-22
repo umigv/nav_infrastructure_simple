@@ -9,6 +9,7 @@
 
   <exec_depend>rclpy</exec_depend>
 	<exec_depend>sensor_msgs</exec_depend>
+	<exec_depend>std_msgs</exec_depend>
 	<exec_depend>python3-pyubx2-pip</exec_depend>
 	<exec_depend>python3-serial</exec_depend>
   <exec_depend>nav_utils</exec_depend>
