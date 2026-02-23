@@ -17,18 +17,14 @@ class CellState:
     Discrete occupancy state of a grid cell.
     """
 
-    value: int  # -1 (unknown) or 0-100 (probability occupied) or 127 (self-drive goal)
+    value: int  # -1 (unknown) or 0-100 (probability occupied)
 
     UNKNOWN_VALUE: ClassVar[int] = -1
     DRIVABLE_THRESHOLD: ClassVar[int] = 30
-    SELF_DRIVE_GOAL_VALUE: ClassVar[int] = 127
 
     def __post_init__(self) -> None:
-        if not (0 <= self.value <= 100 or self.value in [CellState.UNKNOWN_VALUE, CellState.SELF_DRIVE_GOAL_VALUE]):
-            raise ValueError(
-                "CellState value must be within [0, 100] or equal to CellState.UNKNOWN_VALUE or "
-                "CellState.SELF_DRIVE_GOAL_VALUE"
-            )
+        if not (0 <= self.value <= 100 or self.value == CellState.UNKNOWN_VALUE):
+            raise ValueError("CellState value must be within [0, 100] or equal to CellState.UNKNOWN_VALUE")
 
     @classmethod
     def unknown_cell(cls) -> CellState:
@@ -39,7 +35,7 @@ class CellState:
         """
         True if the cell can be traversed by the robot
         """
-        return 0 <= self.value <= CellState.DRIVABLE_THRESHOLD or self.is_self_drive_goal
+        return 0 <= self.value <= CellState.DRIVABLE_THRESHOLD
 
     @property
     def is_unknown(self) -> bool:
@@ -47,13 +43,6 @@ class CellState:
         True if the cell value is unknown
         """
         return self.value == CellState.UNKNOWN_VALUE
-
-    @property
-    def is_self_drive_goal(self) -> bool:
-        """
-        True if the cell is a self-drive goal
-        """
-        return self.value == CellState.SELF_DRIVE_GOAL_VALUE
 
 
 class WorldOccupancyGrid:
