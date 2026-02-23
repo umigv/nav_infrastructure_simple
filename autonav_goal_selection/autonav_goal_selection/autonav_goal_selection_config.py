@@ -11,6 +11,8 @@ class GoalSelectionParams:
         behind_robot_penalty_distance_m: Distance (m) behind the robot up to which the linear penalty applies.
         waypoint_proximity_weight: Fixed score bonus for cells within waypoint_proximity_radius_m of the waypoint.
         waypoint_proximity_radius_m: Radius (m) around the waypoint that receives the proximity bonus.
+        waypoint_dist_weight: A very small linear weight by distance to waypoint to prioritize staying on the side of
+            the lane closer to the waypoint.
     """
 
     lateral_quadratic_factor: float = 0.25
@@ -18,6 +20,7 @@ class GoalSelectionParams:
     behind_robot_penalty_distance_m: float = 60.0
     waypoint_proximity_weight: float = 50.0
     waypoint_proximity_radius_m: float = 20.0
+    waypoint_dist_weight: float = 0.01
 
     def __post_init__(self) -> None:
         if self.lateral_quadratic_factor < 0:

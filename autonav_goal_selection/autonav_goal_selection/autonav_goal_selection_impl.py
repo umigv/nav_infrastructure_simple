@@ -46,10 +46,10 @@ def select_goal(
             x_weight
             + y_weight
             + grid.state(point).value
-            - (
-                params.waypoint_proximity_weight
-                * (params.waypoint_proximity_radius_m * math.sqrt(2) >= distance(point, waypoint))
-            )
+            # this is the waypoint priority hole (within 1m)
+            - (params.waypoint_proximity_weight * (params.waypoint_proximity_radius_m >= distance(point, waypoint)))
+            # waypoint direction priority--adds one lightly weighted term of waypoint distance. just enough to bias the closer side, not enough to even mess with the quadratic.
+            + params.waypoint_dist_weight * distance(point, waypoint)
         )
 
     best_point = min(grid.in_bound_points(), key=heuristic)
