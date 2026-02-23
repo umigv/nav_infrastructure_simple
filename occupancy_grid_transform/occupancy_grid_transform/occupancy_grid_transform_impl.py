@@ -2,59 +2,8 @@ import math
 from itertools import product
 
 import numpy as np
-from nav_msgs.msg import OccupancyGrid
 
 from .occupancy_grid_transform_config import InflationParams
-
-
-def cv_occupancy_grid_to_ros_grid(grid: OccupancyGrid) -> np.ndarray:
-    """
-    Convert an incoming CV-frame occupancy grid into a ROS-aligned 2D array.
-
-    The CV-frame is expected to have the following conventions
-    - Column major
-    - Height = number of cells in +x direction, width = number of cells in +y direction
-    - Top left is origin
-
-    The transformed 2D array has the standard ROS2 convention, where
-    - Row major
-    - Height = number of cells in +y direction, width = number of cells in +x direction
-    - Bottom left is origin
-
-
-    For example, after transform, with a 3 wide 2 tall grid:
-
-        1d indexing by (y * width + x):
-
-               4 5
-        R -->  2 3
-               0 1
-
-
-        2d indexing by (y, x):
-
-              (2, 0) (2, 1)
-        R --> (1, 0) (1, 1)
-              (0, 0) (0, 1)
-
-        ^
-        |
-        y
-          x-->
-
-    R is the robot position, and the numbers represent the index of each cell in the incoming grid data array.
-    The grid is indexed with (y, x) in 2d, and (y * width + x) in 1d.
-
-
-    Args:
-        grid: Incoming `nav_msgs/msg/OccupancyGrid`.
-
-    Returns:
-        A 2D `np.ndarray` of dtype `int8` with shape `(height, width)` under ROS convention.
-    """
-
-    grid = np.asarray(grid.data, dtype=np.int8).reshape((grid.info.width, grid.info.height), order="F")
-    return np.flipud(grid)
 
 
 def add_border(grid: np.ndarray) -> np.ndarray:

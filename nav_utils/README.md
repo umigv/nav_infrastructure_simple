@@ -91,8 +91,7 @@ outside `[0..width) × [0..height)` return an unknown cell.
 | Property | Description |
 |---|---|
 | `is_unknown` | True if the cell lies outside the grid bounds |
-| `is_drivable` | True if occupancy probability is ≤ 30, or the cell is a self-drive goal |
-| `is_self_drive_goal` | True if the cell is marked as a self-drive goal (value `127`) |
+| `is_drivable` | True if occupancy probability is ≤ 30 |
 
 ### Full grid iteration in continuous space via in_bound_points
 To iterate through all in bound grids, WorldOccupancyGrid provides `in_bound_points`. This iterates through every grid 
@@ -101,8 +100,8 @@ in the occupancy grid and yields the center of the grid.
 Example pattern:
 ```py
 for candidate in grid.in_bound_points():
-    if grid.state(candidate).is_self_drive_goal:
-        # found self drive goal, do something special
+    if grid.state(candidate).is_drivable:
+        # found drivable cell, do something special
 ```
 
 ### Discrete “search” in continuous space via neighbors
