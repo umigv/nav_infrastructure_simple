@@ -8,32 +8,6 @@ from occupancy_grid_transform.occupancy_grid_transform_impl import (
 )
 
 
-def test_cv_occupancy_grid_to_ros_grid():
-    # Provider example:
-    # data=[1,2,3,4,5,6], width=3, height=2 corresponds to:
-    # 1 4
-    # 2 5
-    # 3 6
-    #
-    # Expected ROS Convention should be [3, 6, 2, 5, 1, 4] where grid[y, x] gives the value
-    msg = OccupancyGrid()
-    msg.info.width = 3
-    msg.info.height = 2
-    msg.data = [1, 2, 3, 4, 5, 6]
-
-    grid = cv_occupancy_grid_to_ros_grid(msg)
-
-    assert grid.shape == (3, 2)
-    assert grid.dtype == np.int8
-    assert grid.tolist() == [
-        [3, 6],
-        [2, 5],
-        [1, 4],
-    ]
-
-    assert grid.reshape(-1).tolist() == [3, 6, 2, 5, 1, 4]
-
-
 def test_add_border():
     grid = np.zeros((5, 4), dtype=np.int8)
 

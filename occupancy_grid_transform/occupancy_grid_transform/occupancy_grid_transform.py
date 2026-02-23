@@ -9,7 +9,7 @@ from std_msgs.msg import Header
 from tf2_ros import Buffer, TransformListener
 
 from .occupancy_grid_transform_config import OccupancyGridTransformConfig
-from .occupancy_grid_transform_impl import add_border, cv_occupancy_grid_to_ros_grid, inflate_grid
+from .occupancy_grid_transform_impl import add_border, inflate_grid
 
 
 class OccupancyGridTransform(Node):
@@ -32,8 +32,8 @@ class OccupancyGridTransform(Node):
         except Exception as e:
             self.get_logger().error(f"TF {msg.header.frame_id}->{self.config.frame_id} unavailable, skipping: {e}")
             return
-
-        grid = cv_occupancy_grid_to_ros_grid(msg)
+        
+        grid = np.asarray(msg.data, dtype=np.int8).reshape((msg.info.height, msg.info.width))
         bordered_grid = add_border(grid)
         inflated_grid = inflate_grid(bordered_grid, self.config.inflation_params)
         height, width = grid.shape
