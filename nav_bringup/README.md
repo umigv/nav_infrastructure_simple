@@ -2,6 +2,37 @@
 Launch files and shared configuration for the navigation stack. Frame IDs and other system-wide constants are defined
 in `nav_bringup/global_config.py`.
 
+
+## core.launch.py
+Launches core functionalities used across the rest of the launch files
+
+```
+ros2 launch nav_bringup core.launch.py
+```
+
+### Subscribed Topics
+- `teleop_cmd_vel` (`geometry_msgs/Twist`) - Joystick velocity
+- `recovery_cmd_vel` (`geometry_msgs/Twist`) - Recovery velocity
+- `nav_cmd_vel` (`geometry_msgs/Twist`) - Nav velocity
+
+### Published Topics
+- `cmd_vel` (`geometry_msgs/Twist`) - Multiplexed output velocity
+- `state` (`std_msgs/msg/String`) - State (`normal`, `ramp` or `recovery`)
+
+### Services
+- `state/set_recovery` (`std_srvs/SetBool`) - Set whether we are in recovery mode
+- `state/set_ramp` (`std_srvs/SetBool`) - Set whether we are in ramp mode
+
+### Velocity Multiplexing
+| Priority | Topic | Source | Timeout |
+|---|---|---|---|
+| 3 | `teleop_cmd_vel` | Joystick | 0.5s |
+| 2 | `recovery_cmd_vel` | Recovery system | 0.5s |
+| 1 | `nav_cmd_vel` | Autonomy | 0.5s |
+
+If a higher-priority source stops publishing, control falls back to the next source after 0.5s.
+
+
 ## sensors.launch.py
 Launches hardware sensor drivers and static TF transforms.
 
@@ -13,19 +44,24 @@ ros2 launch nav_bringup sensors.launch.py
 - `imu/raw` (`sensor_msgs/Imu`) - Raw IMU data
 - `gps/raw` (`sensor_msgs/NavSatFix`) - Raw GPS fix
 
-## infra.launch.py
+### Broadcasted TF Frames
+- `base_link` → `imu_link`
+- `base_link` → `gps_link`
+
+
+## navigation.launch.py
 Launches the navigation stack.
 
 ```
-ros2 launch nav_bringup infra.launch.py [simulation:=true]
+ros2 launch nav_bringup navigation.launch.py [simulation:=true]
 ```
 
 ### Parameters
 - `simulation`: Launch point simulator instead of real sensors, default `false`
 
+
 ## teleop.launch.py
-Launches joystick teleoperation and velocity multiplexing. twist_mux arbitrates between teleop, recovery, and autonomy
-velocity sources, with teleop taking highest priority.
+Launches joystick teleoperation
 
 ```
 ros2 launch nav_bringup teleop.launch.py controller:=<controller>
@@ -37,26 +73,11 @@ ros2 launch nav_bringup teleop.launch.py controller:=<controller>
 
 ### Controller Mappings
 For both Xbox and PS4:
-- Left joystick — linear motion
-- Right joystick — turning
-- Right shoulder button (RB / R1) — enable
-- Left shoulder button (LB / L1) — turbo
-
-### Subscribed Topics
-- `teleop_cmd_vel` (`geometry_msgs/Twist`) - Joystick velocity (priority 3)
-- `recovery_cmd_vel` (`geometry_msgs/Twist`) - Recovery velocity (priority 2)
-- `nav_cmd_vel` (`geometry_msgs/Twist`) - Autonomy velocity (priority 1)
+- Left joystick - linear motion
+- Right joystick - turning
+- Right shoulder button (RB / R1) - enable
+- Left shoulder button (LB / L1) - turbo
 
 ### Published Topics
 - `joy` (`sensor_msgs/Joy`) - Raw joystick input
 - `teleop_cmd_vel` (`geometry_msgs/Twist`) - Joystick velocity command
-- `cmd_vel` (`geometry_msgs/Twist`) - Multiplexed output velocity
-
-### Velocity Multiplexing
-| Priority | Topic | Source | Timeout |
-|---|---|---|---|
-| 3 | `teleop_cmd_vel` | Joystick | 0.5s |
-| 2 | `recovery_cmd_vel` | Recovery system | 0.5s |
-| 1 | `nav_cmd_vel` | Autonomy | 0.5s |
-
-If a higher-priority source stops publishing, control falls back to the next source after 0.5s.

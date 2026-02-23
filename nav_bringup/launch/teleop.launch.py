@@ -1,9 +1,7 @@
-import os
-
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription, LaunchDescriptionEntity
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from nav_bringup.global_config import FRAMES
 
@@ -11,46 +9,33 @@ CONTROLLERS = ("ps4", "xbox")
 
 
 def launch_setup(context, *args, **kwargs) -> list[LaunchDescriptionEntity]:
-    pkg_share = get_package_share_directory("nav_bringup")
+    bringup_share = get_package_share_directory("nav_bringup")
     controller = LaunchConfiguration("controller").perform(context).strip().lower()
-    teleop_config_file = os.path.join(pkg_share, "config", f"teleop_{controller}.yaml")
-    twist_mux_config_file = os.path.join(pkg_share, "config", "twist_mux.yaml")
     joystick_dev = LaunchConfiguration("joystick_dev").perform(context).strip()
+    teleop_params = PathJoinSubstitution([bringup_share, "config", f"teleop_{controller}.yaml"])
 
     return [
         Node(
             package="joy",
             executable="joy_node",
-            name="joystick_node",
+            name="joy",
             output="screen",
             parameters=[
-                teleop_config_file,
+                teleop_params,
                 {"dev": joystick_dev},
             ],
         ),
         Node(
             package="teleop_twist_joy",
             executable="teleop_node",
-            name="teleop_twist_joy_node",
+            name="teleop_twist_joy",
             output="screen",
             parameters=[
-                teleop_config_file,
+                teleop_params,
                 {"frame": FRAMES["base_frame"]},
             ],
             remappings=[
                 ("cmd_vel", "teleop_cmd_vel"),
-            ],
-        ),
-        Node(
-            package="twist_mux",
-            executable="twist_mux",
-            name="twist_mux_node",
-            output="screen",
-            parameters=[
-                twist_mux_config_file,
-            ],
-            remappings=[
-                ("cmd_vel_out", "cmd_vel"),
             ],
         ),
     ]
