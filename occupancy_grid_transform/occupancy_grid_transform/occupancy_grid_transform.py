@@ -32,7 +32,7 @@ class OccupancyGridTransform(Node):
         except Exception as e:
             self.get_logger().error(f"TF {msg.header.frame_id}->{self.config.frame_id} unavailable, skipping: {e}")
             return
-        
+
         grid = np.asarray(msg.data, dtype=np.int8).reshape((msg.info.height, msg.info.width))
         bordered_grid = add_border(grid)
         inflated_grid = inflate_grid(bordered_grid, self.config.inflation_params)

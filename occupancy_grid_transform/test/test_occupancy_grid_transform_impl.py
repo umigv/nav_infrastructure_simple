@@ -1,9 +1,7 @@
 import numpy as np
-from nav_msgs.msg import OccupancyGrid
 from occupancy_grid_transform.occupancy_grid_transform_config import InflationParams
 from occupancy_grid_transform.occupancy_grid_transform_impl import (
     add_border,
-    cv_occupancy_grid_to_ros_grid,
     inflate_grid,
 )
 
