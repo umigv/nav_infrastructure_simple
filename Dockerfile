@@ -12,4 +12,3 @@ RUN apt-get update \
  && rm -rf /tmp/src
 
 WORKDIR /
-

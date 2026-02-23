@@ -1,4 +1,4 @@
-twist_mux_node:
+twist_mux:
   ros__parameters:
     topics:
       teleop:

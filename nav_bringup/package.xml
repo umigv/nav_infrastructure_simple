@@ -19,6 +19,7 @@
   <exec_depend>joy</exec_depend>
   <exec_depend>teleop_twist_joy</exec_depend>
   <exec_depend>twist_mux</exec_depend>
+  <exec_depend>state_machine</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
