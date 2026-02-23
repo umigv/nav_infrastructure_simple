@@ -1,9 +1,14 @@
 from launch import LaunchDescription
+from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 from nav_bringup.global_config import FRAMES
 
 
 def generate_launch_description() -> LaunchDescription:
+    bringup_share = FindPackageShare("nav_bringup")
+    waypoints_file = PathJoinSubstitution([bringup_share, "config", "waypoints.json"])
+
     return LaunchDescription(
         [
             Node(
@@ -15,17 +20,38 @@ def generate_launch_description() -> LaunchDescription:
                 ],
                 remappings=[
                     ("occupancy_grid", "occ_grid"),
-                    ("transformed_occupancy_grid", "inflated_occupancy_grid"),
+                    ("transformed_occupancy_grid", "occupancy_grid"),
                 ],
             ),
             Node(
-                package="goal_selection",
-                executable="goal_selection",
-                name="goal_selection",
+                package="autonav_goal_selection",
+                executable="autonav_goal_selection",
+                name="autonav_goal_selection",
+                parameters=[
+                    {"waypoints_file_path": waypoints_file},
+                    {"map_frame_id": FRAMES["map_frame"]},
+                    {"world_frame_id": FRAMES["odom_frame"]},
+                ],
                 remappings=[
+                    ("occupancy_grid", "occupancy_grid"),
                     ("odom", "odom/local"),
-                    ("gps_coords", "gps/raw"),
-                    ("inflated_occupancy_grid", "inflated_occupancy_grid"),
+                    ("localization_initialized", "localization_initialized"),
+                    ("fromLL", "fromLL"),
+                    ("goal", "goal"),
+                    ("gps_waypoint", "gps_waypoint"),
+                ],
+            ),
+            Node(
+                package="path_planning",
+                executable="path_planning",
+                name="path_planning",
+                parameters=[
+                    {"frame_id": FRAMES["odom_frame"]},
+                ],
+                remappings=[
+                    ("occupancy_grid", "occupancy_grid"),
+                    ("odom", "odom/local"),
+                    ("goal", "goal"),
                     ("path", "path"),
                 ],
             ),
@@ -41,7 +67,6 @@ def generate_launch_description() -> LaunchDescription:
                     ("odom", "odom/local"),
                     ("path", "path"),
                     ("nav_cmd_vel", "nav_cmd_vel"),
-                    ("smoothed_path", "smoothed_path"),
                 ],
             ),
         ]
