@@ -22,36 +22,28 @@ if [[ ! -e "$DEV" ]]; then
 fi
 
 if [[ -f "$RULES_FILE" ]]; then
-  echo "Replacing existing rule at $RULES_FILE:"
-  echo "  $(cat "$RULES_FILE")"
+echo "Replacing existing rule at $RULES_FILE:"
+echo "  $(cat "$RULES_FILE")"
 fi
 
-info=$(udevadm info -a -n "$DEV" 2>/dev/null)
+PROPS=$(udevadm info --query=property --name="$DEV")
 
-extract() {
-  echo "$info" | grep "ATTRS{$1}" | head -1 | sed 's/.*=="\(.*\)"/\1/'
-}
-
-VENDOR=$(extract idVendor)
-PRODUCT=$(extract idProduct)
-SERIAL=$(extract serial)
+VENDOR=$(echo "$PROPS" | grep "ID_VENDOR_ID=" | cut -d'=' -f2 || true)
+PRODUCT=$(echo "$PROPS" | grep "ID_MODEL_ID=" | cut -d'=' -f2 || true)
+SERIAL=$(echo "$PROPS" | grep "ID_SERIAL_SHORT=" | cut -d'=' -f2 || true)
 
 if [[ -z "$VENDOR" || -z "$PRODUCT" ]]; then
   echo "ERROR: Could not read idVendor/idProduct from $DEV."
-  exit 1
-fi
-
-echo "Device:  $DEV"
+	@@ -45,9 +41,13 @@ echo "Device:  $DEV"
 echo "Alias:   /dev/$ALIAS"
 echo "Vendor:  $VENDOR"
 echo "Product: $PRODUCT"
-echo "Serial:  ${SERIAL:-"(none)"}"
+echo "Serial:  ${SERIAL:-"(none found - using Vendor/Product only)"}"
 
-UDEV_RULE="SUBSYSTEM==\"tty\", ATTRS{idVendor}==\"$VENDOR\", ATTRS{idProduct}==\"$PRODUCT\", ATTRS{serial}==\"$SERIAL\", SYMLINK+=\"$ALIAS\", MODE=\"0666\""
+if [[ -n "$SERIAL" && ! "$SERIAL" =~ ":" ]]; then
+  UDEV_RULE="SUBSYSTEM==\"tty\", ATTRS{idVendor}==\"$VENDOR\", ATTRS{idProduct}==\"$PRODUCT\", ATTRS{serial}==\"$SERIAL\", SYMLINK+=\"$ALIAS\", MODE=\"0666\""
+else
+  UDEV_RULE="SUBSYSTEM==\"tty\", ATTRS{idVendor}==\"$VENDOR\", ATTRS{idProduct}==\"$PRODUCT\", SYMLINK+=\"$ALIAS\", MODE=\"0666\""
+fi
 
 echo "$UDEV_RULE" | sudo tee "$RULES_FILE" > /dev/null
-
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-
-echo "Udev rule installed at $RULES_FILE. Reconnect the device if it is already plugged in."
