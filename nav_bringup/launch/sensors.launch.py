@@ -50,7 +50,7 @@ def generate_launch_description() -> LaunchDescription:
         arguments=[
             "--x", "0.0",
             "--y", "0.0",
-            "--z", "0.0",
+            "--z", "0.8128",
             "--roll", "0.0",
             "--pitch", "0.0",
             "--yaw", str(-math.pi / 2),
@@ -67,7 +67,7 @@ def generate_launch_description() -> LaunchDescription:
         name="tf_base_to_gps",
         output="screen",
         arguments=[
-            "--x", "0.0",
+            "--x", "0.00762",
             "--y", "0.0",
             "--z", "0.8128",
             "--roll", "0.0",
