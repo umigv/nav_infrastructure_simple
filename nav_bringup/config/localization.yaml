@@ -10,7 +10,7 @@ ekf_local:
     twist0: enc_vel/raw
     twist0_config: [false, false, false,
                     false, false, false,
-                    true,  false, false,
+                    true,  true,  false,
                     false, false, true,
                     false, false, false]
     twist0_queue_size: 10
@@ -41,21 +41,21 @@ navsat_transform:
     publish_filtered_gps: false
     use_odometry_yaw: false
     wait_for_datum: true
-
+    datum: [42.29495005, -83.70928790, 0.0]
 
 ekf_global:
   ros__parameters:
     frequency: 30.0
-    sensor_timeout: 1.5
+    sensor_timeout: 0.5
     two_d_mode: true
     publish_tf: true
     print_diagnostics: true
     debug: false
 
     odom0: odom/local
-    odom0_config: [true,  true,  false,
-                   false, false, true,
-                   true,  false, false,
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true, false,
                    false, false, true,
                    false, false, false]
     odom0_queue_size: 10

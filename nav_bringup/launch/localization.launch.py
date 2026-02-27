@@ -64,7 +64,7 @@ def generate_launch_description() -> LaunchDescription:
         ],
         remappings=[
             ("enc_vel", "enc_vel/raw"),
-            ("odom", "odom/local"),
+            ("odom", "odom/global"),
         ],
     )
 
@@ -102,19 +102,6 @@ def generate_launch_description() -> LaunchDescription:
         ],
     )
 
-    gps_origin_initializer = Node(
-        package="localization",
-        executable="gps_origin_initializer",
-        name="gps_origin_initializer",
-        output="screen",
-        condition=UnlessCondition(simulation),
-        remappings=[
-            ("gps", "gps/raw"),
-            ("set_datum", "datum"),
-            ("localization_initialized", "localization_initialized"),
-        ],
-    )
-
     return LaunchDescription(
         [
             DeclareLaunchArgument(
@@ -132,6 +119,5 @@ def generate_launch_description() -> LaunchDescription:
             enc_odom,
             navsat,
             ekf_global,
-            gps_origin_initializer,
         ]
     )
