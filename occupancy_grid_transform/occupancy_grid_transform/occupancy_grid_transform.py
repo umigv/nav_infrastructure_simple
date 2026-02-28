@@ -1,7 +1,7 @@
 import nav_utils.config
 import numpy as np
 import rclpy
-import tf2_geometry_msgs  # noqa: F401 — registers PoseStamped transform handlers
+import tf2_geometry_msgs  # noqa: F401 - registers PoseStamped transform handlers
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import MapMetaData, OccupancyGrid
 from rclpy.node import Node
