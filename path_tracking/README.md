@@ -4,12 +4,12 @@ Path tracking for mobile robots using pure pursuit.
 Subscribes to a planned path and odometry, fits a B-spline through the path waypoints, and publishes velocity commands using the pure pursuit algorithm. The lookahead distance adapts with current speed to improve tracking at higher velocities.
 
 ## Subscribed Topics
-- `odom` (`nav_msgs/msg/Odometry`) — Robot pose and velocity in the odometry frame
-- `path` (`nav_msgs/msg/Path`) — Planned path to follow
+- `odom` (`nav_msgs/msg/Odometry`) - Robot pose and velocity in the odometry frame
+- `path` (`nav_msgs/msg/Path`) - Planned path to follow
 
 ## Published Topics
-- `nav_cmd_vel` (`geometry_msgs/msg/Twist`) — Velocity command for the robot base
-- `smoothed_path` (`nav_msgs/msg/Path`) — B-spline smoothed version of the received path, for visualization
+- `nav_cmd_vel` (`geometry_msgs/msg/Twist`) - Velocity command for the robot base
+- `smoothed_path` (`nav_msgs/msg/Path`) - B-spline smoothed version of the received path, for visualization
 
 ## Config Parameters
 | Parameter | Type | Default | Description |
