@@ -11,7 +11,6 @@ CONTROLLERS = ("ps4", "xbox")
 def launch_setup(context, *args, **kwargs) -> list[LaunchDescriptionEntity]:
     bringup_share = get_package_share_directory("nav_bringup")
     controller = LaunchConfiguration("controller").perform(context).strip().lower()
-    joystick_dev = LaunchConfiguration("joystick_dev").perform(context).strip()
     teleop_params = PathJoinSubstitution([bringup_share, "config", f"teleop_{controller}.yaml"])
 
     return [
@@ -22,7 +21,6 @@ def launch_setup(context, *args, **kwargs) -> list[LaunchDescriptionEntity]:
             output="screen",
             parameters=[
                 teleop_params,
-                {"dev": joystick_dev},
             ],
         ),
         Node(
@@ -48,11 +46,6 @@ def generate_launch_description() -> LaunchDescription:
                 "controller",
                 choices=list(CONTROLLERS),
                 description="Controller profile",
-            ),
-            DeclareLaunchArgument(
-                "joystick_dev",
-                default_value="/dev/input/js0",
-                description="Device of joystick",
             ),
             OpaqueFunction(function=launch_setup),
         ]
