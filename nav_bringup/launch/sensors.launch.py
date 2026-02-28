@@ -69,7 +69,7 @@ def generate_launch_description() -> LaunchDescription:
             ("gps", "gps/raw"),
             ("enc_vel", "enc_vel/raw"),
             ("imu", "imu/raw"),
-        ]
+        ],
     )
 
     # fmt: off
@@ -113,9 +113,9 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             DeclareLaunchArgument(
-                "simulation", 
-                default_value="false", 
-                description="Launch sensor simulator instead of real hardware drivers"
+                "simulation",
+                default_value="false",
+                description="Launch sensor simulator instead of real hardware drivers",
             ),
             vectornav,
             gps,

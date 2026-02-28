@@ -39,7 +39,7 @@ class ImuConfig:
         yaw_meas = true_yaw + imu_yaw_offset - magnetic_declination_rad + N(0, yaw_noise_std_rad)
         wz_meas = true_wz + N(0, wz_noise_std_radps)
 
-    imu_yaw_offset is looked up from the imu_link→base_link TF. magnetic_declination shifts from true-north to 
+    imu_yaw_offset is looked up from the imu_link→base_link TF. magnetic_declination shifts from true-north to
     magnetic-north frame;
 
     Attributes:
@@ -63,8 +63,8 @@ class GpsConfig:
         x_meas = (gps_x) + dx + N(0, noise_std_m)
         y_meas = (gps_y) + dy + N(0, noise_std_m)
 
-    gps_{x,y} is the GPS antenna's true position transformed using gps_link→base_link TF. dx, dy are Ornstein-Uhlenbeck 
-    position drift in map-frame. GPS drift is bounded (mean-reverting) unlike odom drift, modelling slow-varying 
+    gps_{x,y} is the GPS antenna's true position transformed using gps_link→base_link TF. dx, dy are Ornstein-Uhlenbeck
+    position drift in map-frame. GPS drift is bounded (mean-reverting) unlike odom drift, modelling slow-varying
     correlated errors such as multipath, ionospheric delay, and satellite geometry changes.
 
     Attributes:

@@ -253,7 +253,7 @@ class SensorSimulator(Node):
     def ou_update(value: float, sigma: float, tau: float, dt: float) -> float:
         """Does one iteration of Ornstein-Uhlenbeck process.
         https://en.wikipedia.org/wiki/Ornstein%E2%80%93Uhlenbeck_process
-  
+
         Args:
             value: Current state x_t.
             sigma: Steady-state standard deviation. Units match value.
