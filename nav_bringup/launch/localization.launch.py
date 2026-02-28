@@ -4,7 +4,7 @@ from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import AndSubstitution, LaunchConfiguration, NotSubstitution, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from nav_bringup.global_config import FRAMES, GPS_ORIGIN_SIM
+from nav_bringup.global_config import FRAMES, GPS_ORIGIN_SIM, MAGNETIC_DECLINATION_RADIANS
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -64,7 +64,7 @@ def generate_launch_description() -> LaunchDescription:
         ],
         remappings=[
             ("enc_vel", "enc_vel/raw"),
-            ("odom", "odom/global"),
+            ("odom", "odom/local"),
         ],
     )
 
@@ -74,11 +74,15 @@ def generate_launch_description() -> LaunchDescription:
         name="navsat_transform",
         output="screen",
         condition=UnlessCondition(simulation),
-        parameters=[localization_params],
+        parameters=[
+            localization_params,
+            {"datum": [GPS_ORIGIN_SIM["latitude"], GPS_ORIGIN_SIM["longitude"], 0.0]},
+            {"magnetic_declination_radians": MAGNETIC_DECLINATION_RADIANS}
+        ],
         remappings=[
             ("imu", "imu/raw"),
             ("gps/fix", "gps/raw"),
-            ("odometry/filtered", "odom/local"),
+            ("odometry/filtered", "odom/global"),
             ("odometry/gps", "odom/gps"),
             ("datum", "datum"),
         ],
