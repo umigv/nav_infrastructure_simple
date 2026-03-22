@@ -61,6 +61,9 @@ class OccupancyGridSimulator(Node):
         self.resolution_m: float = data["resolution_m"]
         self.width_cells: int = math.ceil(self.config.width_m / self.resolution_m)
         self.height_cells: int = math.ceil(self.config.height_m / self.resolution_m)
+        '''
+        IMPORTANT: THE OCCUPANCYGRID MUST BE CHANGED DEPENDING ON SIMULATION/CV INPUT.
+        '''
         self.obstacle_cells: frozenset[tuple[int, int]] = frozenset((x, y) for x, y in data["obstacles"])
 
         self.get_logger().info(
@@ -79,9 +82,19 @@ class OccupancyGridSimulator(Node):
         map_width_cells = max_x - min_x + 1
         map_height_cells = max_y - min_y + 1
 
-        static_map = np.full((map_height_cells, map_width_cells), self.FREE, dtype=np.int8)
+        '''
+        IMPORTANT: THE OCCUPANCYGRID MUST BE CHANGED DEPENDING ON SIMULATION/CV INPUT.
+        CV: FREE
+        SIM: OCCUPIED
+        '''
+        static_map = np.full((map_height_cells, map_width_cells), self.OCCUPIED, dtype=np.int8)
         for x, y in self.obstacle_cells:
-            static_map[y - min_y, x - min_x] = self.OCCUPIED
+            '''
+            IMPORTANT: THE OCCUPANCYGRID MUST BE CHANGED DEPENDING ON SIMULATION/CV INPUT.
+            CV: OCCUPIED
+            SIM: FREE
+            '''
+            static_map[y - min_y, x - min_x] = self.FREE
 
         self.ground_truth_publisher.publish(
             OccupancyGrid(
@@ -99,8 +112,12 @@ class OccupancyGridSimulator(Node):
     def publish_occupancy_grid(self) -> None:
         if self.robot_pose is None:
             return
-
-        grid = np.full((self.height_cells, self.width_cells), self.FREE, dtype=np.int8)
+        '''
+        IMPORTANT: THE OCCUPANCYGRID MUST BE CHANGED DEPENDING ON SIMULATION/CV INPUT.
+        CV: FREE
+        SIM: OCCUPIED
+        '''
+        grid = np.full((self.height_cells, self.width_cells), self.OCCUPIED, dtype=np.int8)
 
         if len(self.obstacle_cells) != 0:
             for row in range(self.height_cells):
@@ -113,7 +130,12 @@ class OccupancyGridSimulator(Node):
                     ox = math.floor(world.x / self.resolution_m)
                     oy = math.floor(world.y / self.resolution_m)
                     if (ox, oy) in self.obstacle_cells:
-                        grid[row, col] = self.OCCUPIED
+                        '''
+                        IMPORTANT: THE OCCUPANCYGRID MUST BE CHANGED DEPENDING ON SIMULATION/CV INPUT.
+                        CV: OCCUPIED
+                        SIM: FREE
+                        '''
+                        grid[row, col] = self.FREE
 
         self.occupancy_grid_publisher.publish(
             OccupancyGrid(

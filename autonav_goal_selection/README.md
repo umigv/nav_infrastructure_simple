@@ -36,4 +36,11 @@ message on connect. In code, use `nav_utils.qos.LATCHED`. In RViz, set the topic
 | `world_frame_id` | `str` | `odom` | TF frame ID for the world coordinate frame |
 
 ### Goal Selection Parameters (`goal_selection_params`)
-(Currently empty)
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `lateral_quadratic_factor` | `float` | `0.25` | Coefficient for quadratic penalty on lateral (y) distance from the robot's heading |
+| `behind_robot_linear_factor` | `float` | `1.0` | Linear penalty scaling for cells behind the robot |
+| `behind_robot_penalty_distance_m` | `float` | `60.0` | Distance (m) behind the robot up to which the linear penalty applies |
+| `waypoint_proximity_weight` | `float` | `50.0` | Score bonus for cells within `waypoint_proximity_radius_m` of the current waypoint |
+| `waypoint_proximity_radius_m` | `float` | `20.0` | Radius (m) around the waypoint that receives the proximity bonus |
+| `waypoint_dist_weight` | `float` | `0.01` | Small linear weight by distance to waypoint to prioritize the lane side closer to the waypoint |
